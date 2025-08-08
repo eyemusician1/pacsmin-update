@@ -15,7 +15,7 @@ export default function Features() {
           <h2 className="text-4xl sm:text-5xl font-bold text-navy-800 mb-6">
             What We Offer
           </h2>
-          <p className="text-xl text-navy-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl text-navy-600 max-w-3xl mx-auto leading-relaxed">
             Discover the comprehensive range of services and opportunities available 
             to PACSMIN members across the Philippines.
           </p>

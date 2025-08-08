@@ -20,7 +20,7 @@ export default function FeaturedPosts() {
       id: 1,
       title: "Revolutionary Green Chemistry Breakthrough: PACSMIN Students Develop Eco-Friendly Catalyst",
       excerpt: "A groundbreaking discovery by PACSMIN researchers has led to the development of a new biodegradable catalyst that could transform industrial chemical processes. This innovation promises to reduce environmental impact while maintaining high efficiency in chemical reactions.",
-      image: "/placeholder.svg?height=400&width=600",
+      image: "/featured/catalyst.webp",
       author: "Dr. Maria Santos",
       date: "December 15, 2024",
       readTime: "5 min read",
@@ -179,10 +179,10 @@ export default function FeaturedPosts() {
     <section ref={sectionRef} className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-slate-50 to-blue-50/30 backdrop-blur-sm fade-in">
       <div className="container mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-5xl sm:text-6xl font-bold text-navy-800 mb-6">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-navy-800 mb-6">
             Latest News & Updates
           </h2>
-          <p className="text-xl text-navy-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl text-navy-600 max-w-3xl mx-auto leading-relaxed">
             Stay updated with the latest developments, achievements, and opportunities in the PACSMIN community.
           </p>
         </div>
@@ -192,7 +192,7 @@ export default function FeaturedPosts() {
           <div className="mb-16">
             <div className="relative">
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-3xl font-bold text-navy-800">Featured Stories</h3>
+                <h3 className="text-2xl sm:text-3xl font-bold text-navy-800">Featured Stories</h3>
                 <div className="flex space-x-2">
                   <Button
                     variant="outline"
@@ -283,7 +283,7 @@ export default function FeaturedPosts() {
                 </div>
 
                 {/* Carousel Indicators */}
-                <div className="flex justify-center space-x-2 mt-8">
+                <div className="flex justify-center space-x-2 mt-12">
                   {featuredCarouselPosts.map((_, index) => (
                     <button
                       key={index}
@@ -298,106 +298,106 @@ export default function FeaturedPosts() {
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* More Stories Carousel Section */}
-          <div className="relative">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-3xl font-bold text-navy-800">More Stories</h3>
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={prevSlide}
-                  className="rounded-full w-10 h-10 p-0 border-navy-200 hover:bg-navy-50 hover:border-navy-300 transition-all duration-200"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={nextSlide}
-                  className="rounded-full w-10 h-10 p-0 border-navy-200 hover:bg-navy-50 hover:border-navy-300 transition-all duration-200"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
+            {/* More Stories Carousel Section */}
+            <div className="relative">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-2xl sm:text-3xl font-bold text-navy-800">More Stories</h3>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={prevSlide}
+                    className="rounded-full w-10 h-10 p-0 border-navy-200 hover:bg-navy-50 hover:border-navy-300 transition-all duration-200"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={nextSlide}
+                    className="rounded-full w-10 h-10 p-0 border-navy-200 hover:bg-navy-50 hover:border-navy-300 transition-all duration-200"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+                </div>
               </div>
-            </div>
 
-            <div className="relative overflow-hidden rounded-2xl">
-              <div 
-                className="flex transition-transform duration-500 ease-in-out"
-                style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-                onMouseEnter={() => setIsAutoPlaying(false)}
-                onMouseLeave={() => setIsAutoPlaying(true)}
-              >
-                {carouselPosts.map((post, index) => (
-                  <div key={post.id} className="w-full flex-shrink-0">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-2">
-                      {/* Show 3 posts at a time on large screens, 2 on medium, 1 on small */}
-                      {carouselPosts.slice(index, index + 3).map((slidePost) => (
-                        <Card key={slidePost.id} className="bg-white/90 backdrop-blur-md border-blue-100 hover:shadow-xl transition-all duration-300 group overflow-hidden">
-                          <div className="relative">
-                            <img 
-                              src={slidePost.image || "/placeholder.svg"} 
-                              alt={slidePost.title}
-                              className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                            <div className="absolute top-3 left-3">
-                              <span className={`px-2 py-1 rounded-full text-white text-xs font-medium ${getCategoryColor(slidePost.category)}`}>
-                                {slidePost.category}
-                              </span>
-                            </div>
-                          </div>
-                          <CardContent className="p-6">
-                            <div className="flex items-center space-x-3 mb-3 text-navy-600 text-sm">
-                              <div className="flex items-center space-x-1">
-                                <User className="h-3 w-3" />
-                                <span>{slidePost.author}</span>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                <Calendar className="h-3 w-3" />
-                                <span>{slidePost.date}</span>
+              <div className="relative overflow-hidden rounded-2xl">
+                <div 
+                  className="flex transition-transform duration-500 ease-in-out"
+                  style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+                  onMouseEnter={() => setIsAutoPlaying(false)}
+                  onMouseLeave={() => setIsAutoPlaying(true)}
+                >
+                  {carouselPosts.map((post, index) => (
+                    <div key={post.id} className="w-full flex-shrink-0">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {/* Show 3 posts at a time on large screens, 2 on medium, 1 on small */}
+                        {carouselPosts.slice(index, index + 3).map((slidePost) => (
+                          <Card key={slidePost.id} className="bg-white/90 backdrop-blur-md border-blue-100 hover:shadow-xl transition-all duration-300 group overflow-hidden">
+                            <div className="relative">
+                              <img 
+                                src={slidePost.image || "/placeholder.svg"} 
+                                alt={slidePost.title}
+                                className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
+                              />
+                              <div className="absolute top-3 left-3">
+                                <span className={`px-2 py-1 rounded-full text-white text-xs font-medium ${getCategoryColor(slidePost.category)}`}>
+                                  {slidePost.category}
+                                </span>
                               </div>
                             </div>
-                            
-                            <h4 className="text-xl font-bold text-navy-800 mb-3 leading-tight group-hover:text-blue-700 transition-colors line-clamp-2">
-                              {slidePost.title}
-                            </h4>
-                            
-                            <p className="text-navy-600 text-sm leading-relaxed mb-4 line-clamp-3">
-                              {slidePost.excerpt}
-                            </p>
-                            
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-blue-600 font-medium">{slidePost.readTime}</span>
-                              <Button variant="ghost" size="sm" className="text-navy-600 hover:text-blue-600 p-0 h-auto font-medium">
-                                Read More
-                                <ArrowRight className="ml-1 h-3 w-3" />
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                            <CardContent className="p-6">
+                              <div className="flex items-center space-x-3 mb-3 text-navy-600 text-sm">
+                                <div className="flex items-center space-x-1">
+                                  <User className="h-3 w-3" />
+                                  <span>{slidePost.author}</span>
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <Calendar className="h-3 w-3" />
+                                  <span>{slidePost.date}</span>
+                                </div>
+                              </div>
+                              
+                              <h4 className="text-lg sm:text-xl font-bold text-navy-800 mb-3 leading-tight group-hover:text-blue-700 transition-colors line-clamp-2">
+                                {slidePost.title}
+                              </h4>
+                              
+                              <p className="text-navy-600 text-sm leading-relaxed mb-4 line-clamp-3">
+                                {slidePost.excerpt}
+                              </p>
+                              
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-blue-600 font-medium">{slidePost.readTime}</span>
+                                <Button variant="ghost" size="sm" className="text-navy-600 hover:text-blue-600 p-0 h-auto font-medium">
+                                  Read More
+                                  <ArrowRight className="ml-1 h-3 w-3" />
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Carousel Indicators */}
+              <div className="flex justify-center space-x-2 mt-8">
+                {carouselPosts.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToSlide(index)}
+                    className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                      index === currentSlide 
+                        ? 'bg-navy-600 scale-125' 
+                        : 'bg-navy-200 hover:bg-navy-400'
+                    }`}
+                  />
                 ))}
               </div>
-            </div>
-
-            {/* Carousel Indicators */}
-            <div className="flex justify-center space-x-2 mt-8">
-              {carouselPosts.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => goToSlide(index)}
-                  className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                    index === currentSlide 
-                      ? 'bg-navy-600 scale-125' 
-                      : 'bg-navy-200 hover:bg-navy-400'
-                  }`}
-                />
-              ))}
             </div>
           </div>
         </div>

@@ -14,7 +14,7 @@ export default function About() {
           <h2 className="text-4xl sm:text-5xl font-bold text-navy-800 mb-6">
             About PACSMIN
           </h2>
-          <p className="text-xl text-navy-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl text-navy-600 max-w-3xl mx-auto leading-relaxed">
             The Philippine Association of Chemistry Students is dedicated to fostering 
             scientific excellence, innovation, and community among chemistry students nationwide.
           </p>

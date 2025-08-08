@@ -34,7 +34,7 @@ export default function StorePage() {
       name: "PACSMIN Official T-Shirt",
       price: "₱599",
       rating: 4.8,
-      image: "/placeholder.svg?height=300&width=300",
+      image: "/store/tshirt.webp",
       description: "Premium quality cotton t-shirt with PACSMIN logo and chemistry-inspired design."
     },
     {
@@ -82,10 +82,10 @@ export default function StorePage() {
       <main className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="container mx-auto">
           <div className="text-center mb-16">
-            <h1 className="text-5xl sm:text-6xl font-bold text-navy-800 mb-6">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-navy-800 mb-6">
               PACSMIN Store
             </h1>
-            <p className="text-xl text-navy-600 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-lg sm:text-xl text-navy-600 max-w-3xl mx-auto leading-relaxed">
               Get exclusive PACSMIN merchandise, educational materials, and chemistry essentials.
             </p>
           </div>
