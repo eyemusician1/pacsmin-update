@@ -26,13 +26,13 @@ export default function Header() {
           <Link href="/" className="flex items-center space-x-4">
             <div className="relative">
               {/* This is where the Flask icon is */}
-              <img src="/pacsmin.png" alt="PACSMIN Logo" className="h-10 w-10 rounded-full" />
+              <Flask className="h-8 w-8 text-navy-600" /> 
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-400 rounded-full animate-pulse" />
             </div>
             <div className="flex flex-col items-start">
-              <span className="text-xl font-bold text-navy-800">PACSMIN</span>
-              <span className="text-xs text-navy-600 -mt-1">Philippine Association of Chemistry Students</span>
-              <span className="text-xs text-navy-600">Mindanao Chapter</span>
+              <span className="text-lg sm:text-xl font-bold text-navy-800">PACSMIN</span>
+              <span className="text-[0.6rem] sm:text-xs text-navy-600 mt-0">Philippine Association of Chemistry Students</span>
+              <span className="text-[0.6rem] sm:text-xs text-navy-600">Mindanao Chapter</span>
             </div>
           </Link>
 
