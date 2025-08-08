@@ -25,7 +25,7 @@ export default function About() {
             <Card key={index} className="about-card bg-white/80 backdrop-blur-sm border-blue-100 hover:shadow-xl transition-all duration-300">
               <CardContent className="p-6 text-center">
                 <div className="mb-4">
-                  <feature.icon className="h-12 w-12 text-blue-600 mx-auto animate-float" />
+                  <feature.icon className="h-12 w-12 text-blue-600 mx-auto" />
                 </div>
                 <h3 className="text-xl font-semibold text-navy-800 mb-3">
                   {feature.title}

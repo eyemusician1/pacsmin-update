@@ -25,7 +25,7 @@ export default function Features() {
           {features.map((feature, index) => (
             <Card key={index} className="feature-card bg-white/80 backdrop-blur-sm border-blue-100 hover:shadow-2xl group">
               <CardContent className="p-8">
-                <div className={`w-16 h-16 ${feature.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 animate-float`}>
+                <div className={`w-16 h-16 ${feature.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
                   <feature.icon className="h-8 w-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-semibold text-navy-800 mb-4">
