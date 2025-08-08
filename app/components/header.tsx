@@ -26,7 +26,7 @@ export default function Header() {
           <Link href="/" className="flex items-center space-x-4">
             <div className="relative">
               {/* This is where the Flask icon is */}
-              <Flask className="h-8 w-8 text-navy-600" /> 
+              <img src="/pacsmin.png" alt="PACSMIN Logo" className="h-10 w-10 rounded-full" />
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-400 rounded-full animate-pulse" />
             </div>
             <div className="flex flex-col items-start">
