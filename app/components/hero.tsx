@@ -47,7 +47,7 @@ export default function Hero() {
         <div className="max-w-5xl mx-auto">
           {/* Enhanced title with gradient and glow effect */}
           <h1 
-            className={`text-6xl sm:text-7xl lg:text-8xl font-bold text-navy-800 mb-8 leading-tight relative transition-all duration-1000 ${
+            className={`text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-bold text-navy-800 mb-8 leading-tight relative transition-all duration-1000 ${
               isLoaded ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-20 scale-95'
             }`}
           >
