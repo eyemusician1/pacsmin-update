@@ -33,36 +33,42 @@ export default function StorePage() {
     {
       name: "PACSMIN Official T-Shirt",
       price: "₱599",
-      image: "/store/tshirt.webp",
+      rating: 4.8,
+      image: "/placeholder.svg?height=300&width=300",
       description: "Premium quality cotton t-shirt with PACSMIN logo and chemistry-inspired design."
     },
     {
       name: "Laboratory Notebook Set",
       price: "₱299",
+      rating: 4.9,
       image: "/placeholder.svg?height=300&width=300",
       description: "Professional lab notebooks with grid pages, perfect for chemistry experiments and notes."
     },
     {
       name: "Chemistry Reference Guide",
       price: "₱899",
+      rating: 4.7,
       image: "/placeholder.svg?height=300&width=300",
       description: "Comprehensive reference guide covering all major chemistry topics and formulas."
     },
     {
       name: "PACSMIN Hoodie",
       price: "₱1,299",
+      rating: 4.9,
       image: "/placeholder.svg?height=300&width=300",
       description: "Comfortable hoodie with embroidered PACSMIN logo, perfect for lab sessions."
     },
     {
       name: "Periodic Table Poster",
       price: "₱199",
+      rating: 4.6,
       image: "/placeholder.svg?height=300&width=300",
       description: "High-quality periodic table poster with detailed element information."
     },
     {
       name: "Chemistry Mug Set",
       price: "₱449",
+      rating: 4.8,
       image: "/placeholder.svg?height=300&width=300",
       description: "Set of 2 ceramic mugs with beaker design and chemistry formulas."
     }
@@ -102,6 +108,8 @@ export default function StorePage() {
                       {product.name}
                     </CardTitle>
                     <div className="flex items-center">
+                      <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                      <span className="text-sm text-navy-600 ml-1">{product.rating}</span>
                     </div>
                   </div>
                   <p className="text-navy-600 text-sm mb-4 leading-relaxed">
