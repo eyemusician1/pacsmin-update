@@ -9,8 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { FlaskRoundIcon as Flask, Eye, EyeOff, Mail, Lock, ArrowLeft } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, Chrome } from "lucide-react"
 import MoleculeBackground from "../components/molecule-background"
+import { loginWithGoogle, loginWithEmailPassword } from "../appwrite/auth"
+import { useRouter } from "next/navigation"
+import { useUser } from "../context/userContext" // Adjusted import path
 
 export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -18,6 +21,9 @@ export default function SignInPage() {
     email: "",
     password: "",
   })
+  const [isLoading, setIsLoading] = useState(false)
+  const { refreshUser } = useUser()
+  const router = useRouter()
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -26,10 +32,26 @@ export default function SignInPage() {
     })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission here
-    console.log("Sign in form submitted:", formData)
+    setIsLoading(true)
+
+    try {
+      const result = await loginWithEmailPassword(formData.email, formData.password)
+      
+      if (result.success) {
+        await refreshUser() // Refresh user context
+        alert("Successfully signed in!")
+        router.push("/") // Redirect to home page
+      } else {
+        alert(`Sign in failed: ${result.error}`)
+      }
+    } catch (error: any) {
+      console.error("Unexpected error during sign in:", error)
+      alert(`An unexpected error occurred: ${error.message || "Please try again."}`)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -49,8 +71,7 @@ export default function SignInPage() {
         <Card className="bg-white/90 backdrop-blur-md border-blue-100 shadow-2xl">
           <CardHeader className="text-center pb-6 px-4 sm:px-6">
             <div className="flex items-center space-x-3 mb-4 justify-between">
-              <div className="relative">
-              </div>
+              <div className="relative"></div>
             </div>
             <CardTitle className="text-2xl sm:text-3xl font-bold text-navy-800 mb-2">Welcome Back</CardTitle>
             <p className="text-sm sm:text-base text-navy-600 leading-relaxed px-2">Sign in to your PACSMIN account</p>
@@ -105,9 +126,10 @@ export default function SignInPage() {
 
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-navy-600 to-blue-600 hover:from-navy-700 hover:to-blue-700 text-white py-3 h-12 text-base sm:text-lg font-semibold rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105"
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-navy-600 to-blue-600 hover:from-navy-700 hover:to-blue-700 text-white py-3 h-12 text-base sm:text-lg font-semibold rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
-                Sign In
+                {isLoading ? "Signing In..." : "Sign In"}
               </Button>
             </form>
 
@@ -117,6 +139,16 @@ export default function SignInPage() {
                 <span className="bg-white px-4 text-sm text-navy-500">or</span>
               </div>
             </div>
+
+            {/* Google Sign-in Button */}
+            <Button
+              variant="outline"
+              className="w-full h-12 text-base sm:text-lg font-semibold rounded-xl shadow-md border-navy-200 hover:bg-navy-50 transition-all duration-300 flex items-center justify-center gap-2 bg-transparent"
+              onClick={loginWithGoogle}
+            >
+              <Chrome className="h-5 w-5" />
+              Sign in with Google
+            </Button>
 
             <div className="text-center px-2">
               <p className="text-sm sm:text-base text-navy-600">

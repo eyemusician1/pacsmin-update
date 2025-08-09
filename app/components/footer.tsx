@@ -12,7 +12,7 @@ export default function Footer() {
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center space-x-3 mb-6">
               <div className="relative">
-                <Flask className="h-10 w-10 text-blue-400 animate-float" />
+                <img src="/black-logo.png" alt="PACSMIN Logo" className="h-10 w-10" />
                 <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-400 rounded-full animate-pulse" />
               </div>
               <span className="text-2xl font-bold">PACSMIN</span>

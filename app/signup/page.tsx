@@ -9,8 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { FlaskRoundIcon as Flask, Eye, EyeOff, Mail, Lock, User, Phone, School, ArrowLeft } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, User, Phone, School, ArrowLeft, Chrome } from "lucide-react"
 import MoleculeBackground from "../components/molecule-background"
+import { createUserWithEmailPassword, loginWithGoogle } from "../appwrite/auth"
+import { useRouter } from "next/navigation"
 
 export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -24,6 +26,8 @@ export default function SignUpPage() {
     password: "",
     confirmPassword: "",
   })
+  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -32,10 +36,40 @@ export default function SignUpPage() {
     })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission here
-    console.log("Sign up form submitted:", formData)
+    setIsLoading(true)
+
+    if (formData.password !== formData.confirmPassword) {
+      alert("Passwords do not match!")
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      const result = await createUserWithEmailPassword(
+        formData.email,
+        formData.password,
+        formData.firstName,
+        formData.lastName,
+        formData.phone,
+        formData.university,
+      )
+
+      if (result.success) {
+        alert("Account created successfully! Please sign in to continue.")
+        // Redirect to sign-in page instead of home
+        router.push("/signin")
+      } else {
+        console.error("Appwrite signup error:", result.error)
+        alert(`Error creating account: ${result.error}`)
+      }
+    } catch (error: any) {
+      console.error("Unexpected error during signup:", error)
+      alert(`An unexpected error occurred: ${error.message || "Please try again."}`)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -55,8 +89,7 @@ export default function SignUpPage() {
         <Card className="bg-white/90 backdrop-blur-md border-blue-100 shadow-2xl">
           <CardHeader className="text-center pb-6 px-4 sm:px-6">
             <div className="flex items-center justify-center space-x-3 mb-4">
-              <div className="relative">
-              </div>
+              <div className="relative"></div>
             </div>
             <CardTitle className="text-2xl sm:text-3xl font-bold text-navy-800 mb-2">Join PACSMIN</CardTitle>
             <p className="text-sm sm:text-base text-navy-600 leading-relaxed px-2">
@@ -216,9 +249,10 @@ export default function SignUpPage() {
 
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-navy-600 to-blue-600 hover:from-navy-700 hover:to-blue-700 text-white py-3 h-12 text-base sm:text-lg font-semibold rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105"
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-navy-600 to-blue-600 hover:from-navy-700 hover:to-blue-700 text-white py-3 h-12 text-base sm:text-lg font-semibold rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
-                Create Account
+                {isLoading ? "Creating Account..." : "Create Account"}
               </Button>
             </form>
 
@@ -228,6 +262,15 @@ export default function SignUpPage() {
                 <span className="bg-white px-4 text-sm text-navy-500">or</span>
               </div>
             </div>
+
+            <Button
+              variant="outline"
+              className="w-full h-12 text-base sm:text-lg font-semibold rounded-xl shadow-md border-navy-200 hover:bg-navy-50 transition-all duration-300 flex items-center justify-center gap-2 bg-transparent"
+              onClick={loginWithGoogle}
+            >
+              <Chrome className="h-5 w-5" />
+              Sign up with Google
+            </Button>
 
             <div className="text-center px-2">
               <p className="text-sm sm:text-base text-navy-600">
