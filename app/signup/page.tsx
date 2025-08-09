@@ -72,6 +72,15 @@ export default function SignUpPage() {
     }
   }
 
+  const handleGoogleLogin = async () => {
+    try {
+      await loginWithGoogle()
+    } catch (error: any) {
+      console.error("Google login error:", error)
+      alert(`Google login failed: ${error.message || "Please try again."}`)
+    }
+  }
+
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
       <MoleculeBackground />
@@ -105,7 +114,7 @@ export default function SignUpPage() {
                     First Name
                   </Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-navy-400" />
+                    <User className="absolute left-3 top-3 h-4 w-4 text-navy-400 pointer-events-none" />
                     <Input
                       id="firstName"
                       name="firstName"
@@ -123,7 +132,7 @@ export default function SignUpPage() {
                     Last Name
                   </Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-navy-400" />
+                    <User className="absolute left-3 top-3 h-4 w-4 text-navy-400 pointer-events-none" />
                     <Input
                       id="lastName"
                       name="lastName"
@@ -143,7 +152,7 @@ export default function SignUpPage() {
                   Email Address
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-navy-400" />
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-navy-400 pointer-events-none" />
                   <Input
                     id="email"
                     name="email"
@@ -162,7 +171,7 @@ export default function SignUpPage() {
                   Phone Number
                 </Label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-3 h-4 w-4 text-navy-400" />
+                  <Phone className="absolute left-3 top-3 h-4 w-4 text-navy-400 pointer-events-none" />
                   <Input
                     id="phone"
                     name="phone"
@@ -181,7 +190,7 @@ export default function SignUpPage() {
                   University/School
                 </Label>
                 <div className="relative">
-                  <School className="absolute left-3 top-3 h-4 w-4 text-navy-400" />
+                  <School className="absolute left-3 top-3 h-4 w-4 text-navy-400 pointer-events-none" />
                   <Input
                     id="university"
                     name="university"
@@ -200,7 +209,7 @@ export default function SignUpPage() {
                   Password
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-navy-400" />
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-navy-400 pointer-events-none" />
                   <Input
                     id="password"
                     name="password"
@@ -214,7 +223,8 @@ export default function SignUpPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-navy-400 hover:text-navy-600"
+                    className="absolute right-3 top-3 text-navy-400 hover:text-navy-600 touch-manipulation"
+                    style={{ minHeight: '24px', minWidth: '24px' }}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -226,7 +236,7 @@ export default function SignUpPage() {
                   Confirm Password
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-navy-400" />
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-navy-400 pointer-events-none" />
                   <Input
                     id="confirmPassword"
                     name="confirmPassword"
@@ -240,7 +250,8 @@ export default function SignUpPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-3 text-navy-400 hover:text-navy-600"
+                    className="absolute right-3 top-3 text-navy-400 hover:text-navy-600 touch-manipulation"
+                    style={{ minHeight: '24px', minWidth: '24px' }}
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -250,7 +261,8 @@ export default function SignUpPage() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-navy-600 to-blue-600 hover:from-navy-700 hover:to-blue-700 text-white py-3 h-12 text-base sm:text-lg font-semibold rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full bg-gradient-to-r from-navy-600 to-blue-600 hover:from-navy-700 hover:to-blue-700 text-white py-3 h-12 text-base sm:text-lg font-semibold rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation active:scale-95"
+                style={{ minHeight: '48px', touchAction: 'manipulation' }}
               >
                 {isLoading ? "Creating Account..." : "Create Account"}
               </Button>
@@ -264,9 +276,11 @@ export default function SignUpPage() {
             </div>
 
             <Button
+              type="button"
               variant="outline"
-              className="w-full h-12 text-base sm:text-lg font-semibold rounded-xl shadow-md border-navy-200 hover:bg-navy-50 transition-all duration-300 flex items-center justify-center gap-2 bg-transparent"
-              onClick={loginWithGoogle}
+              className="w-full h-12 text-base sm:text-lg font-semibold rounded-xl shadow-md border-navy-200 hover:bg-navy-50 transition-all duration-300 flex items-center justify-center gap-2 bg-transparent touch-manipulation active:scale-95"
+              onClick={handleGoogleLogin}
+              style={{ minHeight: '48px', touchAction: 'manipulation' }}
             >
               <Chrome className="h-5 w-5" />
               Sign up with Google
