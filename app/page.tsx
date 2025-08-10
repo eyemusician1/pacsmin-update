@@ -1,39 +1,55 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, Suspense, lazy } from "react"
 import Header from "./components/header"
 import Hero from "./components/hero"
-import About from "./components/about"
-import Features from "./components/features"
-import LatestUpdateImage from "./components/latest-update-image" // New import
-import Footer from "./components/footer"
 import MoleculeBackground from "./components/molecule-background"
-import FeaturedPosts from "./components/featured-posts"
+
+// Lazy load components that are below the fold
+const About = lazy(() => import("./components/about"))
+const Features = lazy(() => import("./components/features"))
+const FeaturedPosts = lazy(() => import("./components/featured-posts"))
+const LatestUpdateImage = lazy(() => import("./components/latest-update-image"))
+const Footer = lazy(() => import("./components/footer"))
+
+// Loading component for lazy-loaded sections
+const SectionLoader = () => (
+  <div className="py-16 sm:py-24 flex items-center justify-center">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy-600"></div>
+  </div>
+)
 
 export default function HomePage() {
   const mainRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // Intersection Observer for scroll animations
+    // Optimized Intersection Observer with better performance
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('animate-in')
-          } else {
-            // Optional: remove animate-in when out of view to allow re-animation on scroll back up
-            // entry.target.classList.remove('animate-in')
+            entry.target.classList.add("animate-in")
+            // Unobserve after animation to improve performance
+            observer.unobserve(entry.target)
           }
         })
       },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+      {
+        threshold: 0.1,
+        rootMargin: "0px 0px -50px 0px",
+      },
     )
 
-    // Observe all fade-in elements
-    const fadeElements = document.querySelectorAll('.fade-in')
-    fadeElements.forEach((el) => observer.observe(el))
+    // Use setTimeout to avoid blocking initial render
+    const timer = setTimeout(() => {
+      const fadeElements = document.querySelectorAll(".fade-in")
+      fadeElements.forEach((el) => observer.observe(el))
+    }, 100)
 
-    return () => observer.disconnect()
+    return () => {
+      clearTimeout(timer)
+      observer.disconnect()
+    }
   }, [])
 
   return (
@@ -42,12 +58,22 @@ export default function HomePage() {
       <Header />
       <main>
         <Hero />
-        <About />
-        <Features />
-        <FeaturedPosts />
-        <LatestUpdateImage /> {/* New component added here */}
+        <Suspense fallback={<SectionLoader />}>
+          <About />
+        </Suspense>
+        <Suspense fallback={<SectionLoader />}>
+          <Features />
+        </Suspense>
+        <Suspense fallback={<SectionLoader />}>
+          <FeaturedPosts />
+        </Suspense>
+        <Suspense fallback={<SectionLoader />}>
+          <LatestUpdateImage />
+        </Suspense>
       </main>
-      <Footer />
+      <Suspense fallback={<SectionLoader />}>
+        <Footer />
+      </Suspense>
     </div>
   )
 }
