@@ -1,295 +1,199 @@
-"use client"
-
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
-
-// Types
-export interface Event {
-  id: number
-  title: string
-  date: string
-  endDate?: string
-  time: string
-  location: string
-  attendees: number
-  maxAttendees: number
-  status: "Published" | "Draft"
-  description: string
-  registrationFee: string
-  organizer: string
-  category?: string
-  image?: string
-}
 
 export interface Story {
-  id: number
+  id: string
   title: string
   excerpt: string
+  content: string
   author: string
   date: string
+  readTime: string
   category: string
-  status: "Published" | "Draft"
-  views: string
-  likes: string
-  comments?: string
-  readTime?: string
   image?: string
-  content?: string
-  isFeatured?: boolean
+  isFeatured: boolean
+  views?: number
+  likes?: number
+  comments?: number
 }
 
-export interface User {
-  id: number
+interface StoreItem {
+  id: string
   name: string
-  email: string
-  phone: string
-  university: string
-  role: "Student" | "Admin" | "Moderator"
-  status: "Active" | "Inactive" | "Suspended"
-  joinDate: string
-  lastLogin: string
+  price: number
+  image: string
+  category: string
+  description: string
+  inStock: boolean
 }
 
-interface AppStore {
-  // Events
-  events: Event[]
-  addEvent: (event: Omit<Event, "id">) => void
-  updateEvent: (id: number, event: Partial<Event>) => void
-  deleteEvent: (id: number) => void
-  getPublishedEvents: () => Event[]
-
-  // Stories
+interface StoreState {
   stories: Story[]
+  storeItems: StoreItem[]
   addStory: (story: Omit<Story, "id">) => void
-  updateStory: (id: number, story: Partial<Story>) => void
-  deleteStory: (id: number) => void
+  updateStory: (id: string, story: Partial<Story>) => void
+  deleteStory: (id: string) => void
   getFeaturedStories: () => Story[]
   getMoreStories: () => Story[]
-
-  // Users
-  users: User[]
-  addUser: (user: Omit<User, "id">) => void
-  updateUser: (id: number, user: Partial<User>) => void
-  deleteUser: (id: number) => void
+  addStoreItem: (item: Omit<StoreItem, "id">) => void
+  updateStoreItem: (id: string, item: Partial<StoreItem>) => void
+  deleteStoreItem: (id: string) => void
 }
 
-export const useAppStore = create<AppStore>()(
-  persist(
-    (set, get) => ({
-      // Initial Events Data
-      events: [
-        {
-          id: 1,
-          title: "National Chemistry Symposium 2024",
-          date: "2024-03-15",
-          endDate: "2024-03-17",
-          time: "9:00 AM - 5:00 PM",
-          location: "University of the Philippines Diliman",
-          attendees: 450,
-          maxAttendees: 600,
-          status: "Published",
-          description:
-            "Join the biggest chemistry event of the year featuring renowned speakers and cutting-edge research presentations.",
-          registrationFee: "₱1,500",
-          organizer: "PACSMIN National",
-          category: "Symposium",
-          image: "/placeholder.svg?height=200&width=400&text=Chemistry+Symposium",
-        },
-        {
-          id: 2,
-          title: "Organic Chemistry Workshop",
-          date: "2024-04-08",
-          endDate: "2024-04-08",
-          time: "1:00 PM - 6:00 PM",
-          location: "Ateneo de Manila University",
-          attendees: 75,
-          maxAttendees: 100,
-          status: "Published",
-          description:
-            "Hands-on workshop focusing on advanced organic synthesis techniques and laboratory best practices.",
-          registrationFee: "₱800",
-          organizer: "PACSMIN Manila",
-          category: "Workshop",
-          image: "/placeholder.svg?height=200&width=400&text=Organic+Chemistry",
-        },
-        {
-          id: 3,
-          title: "Chemistry Quiz Bowl Championship",
-          date: "2024-05-20",
-          endDate: "2024-05-20",
-          time: "10:00 AM - 4:00 PM",
-          location: "De La Salle University",
-          attendees: 150,
-          maxAttendees: 200,
-          status: "Published",
-          description:
-            "Test your chemistry knowledge in this exciting competition with prizes and recognition for winners.",
-          registrationFee: "₱500",
-          organizer: "PACSMIN South",
-          category: "Competition",
-          image: "/placeholder.svg?height=200&width=400&text=Quiz+Bowl",
-        },
-      ],
-
-      // Initial Stories Data
-      stories: [
-        {
-          id: 1,
-          title: "Revolutionary Green Chemistry Breakthrough: PACSMIN Students Develop Eco-Friendly Catalyst",
-          excerpt:
-            "A groundbreaking discovery by PACSMIN researchers has led to the development of a new biodegradable catalyst that could transform industrial chemical processes.",
-          author: "Dr. Maria Santos",
-          date: "2024-01-15",
-          category: "Research",
-          status: "Published",
-          views: "2.1k",
-          likes: "156",
-          comments: "23",
-          readTime: "5 min read",
-          isFeatured: true,
-          image: "/placeholder.svg?height=400&width=600&text=Green+Chemistry",
-        },
-        {
-          id: 2,
-          title: "PACSMIN's Annual Research Summit Highlights Student Innovations",
-          excerpt:
-            "This year's summit showcased incredible student-led research projects, pushing the boundaries of chemical science and technology.",
-          author: "Prof. David Lee",
-          date: "2024-01-10",
-          category: "Event",
-          status: "Published",
-          views: "1.8k",
-          likes: "120",
-          comments: "18",
-          readTime: "7 min read",
-          isFeatured: true,
-          image: "/placeholder.svg?height=400&width=600&text=Research+Summit",
-        },
-        {
-          id: 3,
-          title: "PACSMIN Wins National Chemistry Competition 2024",
-          excerpt:
-            "Our team secured first place in the prestigious National Chemistry Olympiad, showcasing exceptional talent and dedication.",
-          author: "John Dela Cruz",
-          date: "2024-01-12",
-          category: "Achievement",
-          status: "Published",
-          views: "1.5k",
-          likes: "89",
-          readTime: "3 min read",
-          isFeatured: false,
-          image: "/placeholder.svg?height=250&width=400&text=Chemistry+Competition",
-        },
-        {
-          id: 4,
-          title: "New Laboratory Facilities Open at Partner Universities",
-          excerpt:
-            "State-of-the-art chemistry labs equipped with cutting-edge technology are now available to PACSMIN members.",
-          author: "Sarah Kim",
-          date: "2024-01-08",
-          category: "News",
-          status: "Published",
-          views: "1.2k",
-          likes: "67",
-          readTime: "4 min read",
-          isFeatured: false,
-          image: "/placeholder.svg?height=250&width=400&text=Laboratory+Facilities",
-        },
-      ],
-
-      // Initial Users Data
-      users: [
-        {
-          id: 1,
-          name: "Maria Santos",
-          email: "maria.santos@email.com",
-          phone: "+63 912 345 6789",
-          university: "University of the Philippines",
-          role: "Student",
-          status: "Active",
-          joinDate: "2024-01-15",
-          lastLogin: "2024-01-20",
-        },
-        {
-          id: 2,
-          name: "John Dela Cruz",
-          email: "john.delacruz@email.com",
-          phone: "+63 923 456 7890",
-          university: "Ateneo de Manila University",
-          role: "Admin",
-          status: "Active",
-          joinDate: "2023-08-10",
-          lastLogin: "2024-01-20",
-        },
-        {
-          id: 3,
-          name: "Sarah Kim",
-          email: "sarah.kim@email.com",
-          phone: "+63 934 567 8901",
-          university: "De La Salle University",
-          role: "Student",
-          status: "Active",
-          joinDate: "2023-12-05",
-          lastLogin: "2024-01-18",
-        },
-      ],
-
-      // Event Actions
-      addEvent: (event) =>
-        set((state) => ({
-          events: [...state.events, { ...event, id: Date.now() }],
-        })),
-
-      updateEvent: (id, updatedEvent) =>
-        set((state) => ({
-          events: state.events.map((event) => (event.id === id ? { ...event, ...updatedEvent } : event)),
-        })),
-
-      deleteEvent: (id) =>
-        set((state) => ({
-          events: state.events.filter((event) => event.id !== id),
-        })),
-
-      getPublishedEvents: () => get().events.filter((event) => event.status === "Published"),
-
-      // Story Actions
-      addStory: (story) =>
-        set((state) => ({
-          stories: [...state.stories, { ...story, id: Date.now() }],
-        })),
-
-      updateStory: (id, updatedStory) =>
-        set((state) => ({
-          stories: state.stories.map((story) => (story.id === id ? { ...story, ...updatedStory } : story)),
-        })),
-
-      deleteStory: (id) =>
-        set((state) => ({
-          stories: state.stories.filter((story) => story.id !== id),
-        })),
-
-      getFeaturedStories: () => get().stories.filter((story) => story.isFeatured && story.status === "Published"),
-
-      getMoreStories: () => get().stories.filter((story) => !story.isFeatured && story.status === "Published"),
-
-      // User Actions
-      addUser: (user) =>
-        set((state) => ({
-          users: [...state.users, { ...user, id: Date.now() }],
-        })),
-
-      updateUser: (id, updatedUser) =>
-        set((state) => ({
-          users: state.users.map((user) => (user.id === id ? { ...user, ...updatedUser } : user)),
-        })),
-
-      deleteUser: (id) =>
-        set((state) => ({
-          users: state.users.filter((user) => user.id !== id),
-        })),
-    }),
+const useStore = create<StoreState>((set, get) => ({
+  stories: [
     {
-      name: "pacsmin-store",
+      id: "1",
+      title: "Revolutionary Breakthrough in Organic Chemistry",
+      excerpt:
+        "Researchers at PACSMIN have discovered a new synthetic pathway that could revolutionize pharmaceutical manufacturing.",
+      content: "Lorem ipsum dolor sit amet, consectetur adipiscing elit...",
+      author: "Dr. Sarah Johnson",
+      date: "2024-01-15",
+      readTime: "5 min read",
+      category: "Research",
+      image: "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=800&h=500&fit=crop",
+      isFeatured: true,
+      views: 1250,
+      likes: 89,
+      comments: 23,
     },
-  ),
-)
+    {
+      id: "2",
+      title: "PACSMIN Annual Conference 2024 Highlights",
+      excerpt: "Over 500 chemistry professionals gathered to share the latest innovations and research findings.",
+      content: "Lorem ipsum dolor sit amet, consectetur adipiscing elit...",
+      author: "Prof. Michael Chen",
+      date: "2024-01-10",
+      readTime: "8 min read",
+      category: "Event",
+      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=500&fit=crop",
+      isFeatured: true,
+      views: 980,
+      likes: 67,
+      comments: 15,
+    },
+    {
+      id: "3",
+      title: "New Laboratory Safety Protocols",
+      excerpt: "Updated safety guidelines ensure the highest standards of protection for all chemistry professionals.",
+      content: "Lorem ipsum dolor sit amet, consectetur adipiscing elit...",
+      author: "Dr. Emily Rodriguez",
+      date: "2024-01-08",
+      readTime: "3 min read",
+      category: "News",
+      image: "https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=600&h=400&fit=crop",
+      isFeatured: false,
+      views: 654,
+      likes: 43,
+      comments: 8,
+    },
+    {
+      id: "4",
+      title: "Student Research Showcase Winners",
+      excerpt: "Celebrating the next generation of chemists and their groundbreaking research projects.",
+      content: "Lorem ipsum dolor sit amet, consectetur adipiscing elit...",
+      author: "Dr. James Wilson",
+      date: "2024-01-05",
+      readTime: "6 min read",
+      category: "Achievement",
+      image: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=600&h=400&fit=crop",
+      isFeatured: false,
+      views: 432,
+      likes: 29,
+      comments: 12,
+    },
+    {
+      id: "5",
+      title: "Green Chemistry Initiative Launch",
+      excerpt: "PACSMIN launches new sustainability program to promote environmentally friendly chemical practices.",
+      content: "Lorem ipsum dolor sit amet, consectetur adipiscing elit...",
+      author: "Dr. Lisa Thompson",
+      date: "2024-01-03",
+      readTime: "4 min read",
+      category: "Opportunity",
+      image: "https://images.unsplash.com/photo-1581833971358-2c8b550f87b3?w=600&h=400&fit=crop",
+      isFeatured: false,
+      views: 789,
+      likes: 56,
+      comments: 18,
+    },
+    {
+      id: "6",
+      title: "Advanced Spectroscopy Workshop",
+      excerpt: "Hands-on training session covering the latest techniques in molecular analysis and characterization.",
+      content: "Lorem ipsum dolor sit amet, consectetur adipiscing elit...",
+      author: "Prof. David Kim",
+      date: "2024-01-01",
+      readTime: "7 min read",
+      category: "Alumni",
+      image: "https://images.unsplash.com/photo-1628595351029-c2bf17511435?w=600&h=400&fit=crop",
+      isFeatured: false,
+      views: 567,
+      likes: 38,
+      comments: 9,
+    },
+  ],
+  storeItems: [
+    {
+      id: "1",
+      name: "PACSMIN Professional T-Shirt",
+      price: 25.99,
+      image: "/store/tshirt.webp",
+      category: "Apparel",
+      description: "High-quality cotton t-shirt with PACSMIN logo",
+      inStock: true,
+    },
+    {
+      id: "2",
+      name: "Chemistry Lab Notebook",
+      price: 15.99,
+      image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&h=400&fit=crop",
+      category: "Stationery",
+      description: "Professional lab notebook with grid pages",
+      inStock: true,
+    },
+    {
+      id: "3",
+      name: "PACSMIN Coffee Mug",
+      price: 12.99,
+      image: "https://images.unsplash.com/photo-1514228742587-6b1558fcf93a?w=400&h=400&fit=crop",
+      category: "Drinkware",
+      description: "Ceramic mug perfect for your morning coffee",
+      inStock: false,
+    },
+  ],
+  addStory: (story) =>
+    set((state) => ({
+      stories: [...state.stories, { ...story, id: Date.now().toString() }],
+    })),
+  updateStory: (id, updatedStory) =>
+    set((state) => ({
+      stories: state.stories.map((story) => (story.id === id ? { ...story, ...updatedStory } : story)),
+    })),
+  deleteStory: (id) =>
+    set((state) => ({
+      stories: state.stories.filter((story) => story.id !== id),
+    })),
+  getFeaturedStories: () => {
+    const state = get()
+    return state.stories.filter(story => story.isFeatured)
+  },
+  getMoreStories: () => {
+    const state = get()
+    return state.stories.filter(story => !story.isFeatured)
+  },
+  addStoreItem: (item) =>
+    set((state) => ({
+      storeItems: [...state.storeItems, { ...item, id: Date.now().toString() }],
+    })),
+  updateStoreItem: (id, updatedItem) =>
+    set((state) => ({
+      storeItems: state.storeItems.map((item) => (item.id === id ? { ...item, ...updatedItem } : item)),
+    })),
+  deleteStoreItem: (id) =>
+    set((state) => ({
+      storeItems: state.storeItems.filter((item) => item.id !== id),
+    })),
+}))
+
+export default useStore

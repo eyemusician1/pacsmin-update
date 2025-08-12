@@ -1,270 +1,247 @@
-import { Client, Account, Databases, ID, OAuthProvider, Query } from "appwrite"
-import { appwriteConfig } from "./client"
-import { redirect } from "next/navigation"
+import { Client, Account, Databases, ID, Query, OAuthProvider } from "appwrite"
 
-// Initialize the client first
 const client = new Client()
+  .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_API_ENDPOINT!)
+  .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!)
 
-// Only initialize if we have the required config
-if (appwriteConfig.endpoint && appwriteConfig.projectId) {
-  client.setEndpoint(appwriteConfig.endpoint).setProject(appwriteConfig.projectId)
-} else {
-  console.error("Appwrite configuration is missing. Please check your environment variables.")
-}
-
-// Then initialize Account and Databases with the configured client
 export const account = new Account(client)
-export const database = new Databases(client)
+export const databases = new Databases(client)
 
-export const getExistingUser = async (id: string) => {
-  try {
-    if (!appwriteConfig.databaseId || !appwriteConfig.userCollectionId) {
-      throw new Error("Database configuration is missing")
-    }
+// Database and collection IDs
+const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!
+const USERS_COLLECTION_ID = process.env.NEXT_PUBLIC_APPWRITE_USERS_COLLECTION_ID!
 
-    const { documents, total } = await database.listDocuments(
-      appwriteConfig.databaseId,
-      appwriteConfig.userCollectionId,
-      [Query.equal("accountId", id)],
-    )
-    return total > 0 ? documents[0] : null
-  } catch (error) {
-    console.error("Error fetching user:", error)
-    return null
-  }
+export interface DatabaseUser {
+  $id: string
+  accountId: string
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  university?: string
+  imageUrl?: string | null
+  role?: "user" | "admin"
+  $createdAt: string
+  $updatedAt: string
 }
 
-export const storeUserData = async () => {
+// Create a new user account and database record
+export async function createUser(userData: {
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  phone?: string
+  university?: string
+}) {
   try {
-    const user = await account.get()
-    if (!user) throw new Error("User not found")
-
-    // Check if user already exists
-    const existingUser = await getExistingUser(user.$id)
-    if (existingUser) {
-      console.log("User already exists")
-      return existingUser
-    }
-
-    const { providerAccessToken } = (await account.getSession("current")) || {}
-    const profilePicture = providerAccessToken ? await getGooglePicture(providerAccessToken) : null
-
-    // Split name for Google OAuth users
-    const [firstName, ...lastNameParts] = user.name.split(" ")
-    const lastName = lastNameParts.join(" ") || ""
-
-    const createdUser = await database.createDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.userCollectionId,
+    // Create account
+    const newAccount = await account.create(
       ID.unique(),
-      {
-        accountId: user.$id,
-        email: user.email,
-        firstName: firstName,
-        lastName: lastName,
-        phone: "", // Google doesn't provide phone, leave empty
-        university: "", // Google doesn't provide university, leave empty
-        imageUrl: profilePicture,
-      },
+      userData.email,
+      userData.password,
+      `${userData.firstName} ${userData.lastName}`,
     )
 
-    if (!createdUser.$id) redirect("/sign-in")
-    return createdUser
-  } catch (error) {
-    console.error("Error storing user data:", error)
-    throw error
-  }
-}
+    if (!newAccount) throw new Error("Failed to create account")
 
-const getGooglePicture = async (accessToken: string) => {
-  try {
-    const response = await fetch("https://people.googleapis.com/v1/people/me?personFields=photos", {
-      headers: { Authorization: `Bearer ${accessToken}` },
+    // Create user document in database with default 'user' role
+    const newUser = await databases.createDocument(DATABASE_ID, USERS_COLLECTION_ID, ID.unique(), {
+      accountId: newAccount.$id,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      email: userData.email,
+      phone: userData.phone || "",
+      university: userData.university || "",
+      imageUrl: null,
+      role: "user", // Default role
     })
-    if (!response.ok) throw new Error("Failed to fetch Google profile picture")
-    const { photos } = await response.json()
-    return photos?.[0]?.url || null
-  } catch (error) {
-    console.error("Error fetching Google picture:", error)
-    return null
-  }
-}
 
-export const loginWithGoogle = async () => {
-  try {
-    if (!appwriteConfig.endpoint || !appwriteConfig.projectId) {
-      throw new Error("Appwrite configuration is missing")
-    }
-
-    account.createOAuth2Session(
-      OAuthProvider.Google,
-      `${window.location.origin}/auth/callback`, // Success URL
-      `${window.location.origin}/auth/error`, // Failure URL
-    )
+    return newUser as unknown as DatabaseUser
   } catch (error) {
-    console.error("Error during OAuth2 session creation:", error)
+    console.error("Error creating user:", error)
     throw error
   }
 }
 
-// Updated email/password login function with better error handling
-export const loginWithEmailPassword = async (email: string, password: string) => {
-  try {
-    // Check if Appwrite is properly configured
-    if (!appwriteConfig.endpoint || !appwriteConfig.projectId) {
-      throw new Error("Appwrite configuration is missing. Please check your environment variables.")
-    }
-
-    if (!appwriteConfig.databaseId || !appwriteConfig.userCollectionId) {
-      throw new Error("Database configuration is missing. Please check your environment variables.")
-    }
-
-    // Validate input
-    if (!email || !password) {
-      throw new Error("Email and password are required")
-    }
-
-    // Log configuration for debugging (remove in production)
-    console.log("Appwrite endpoint:", appwriteConfig.endpoint)
-    console.log("Appwrite project ID:", appwriteConfig.projectId)
-
-    // Attempt to create a session with Appwrite
-    const session = await account.createEmailPasswordSession(email, password)
-    console.log("Session created successfully:", session)
-
-    // Get the current user account
-    const user = await account.get()
-    if (!user) throw new Error("Failed to get user after login")
-
-    // Check if user exists in our database
-    const existingUser = await getExistingUser(user.$id)
-    if (!existingUser) {
-      throw new Error("User not found in database. Please contact support.")
-    }
-
-    return { success: true, user: existingUser }
-  } catch (error: any) {
-    console.error("Error during email/password login:", error)
-
-    // Provide more specific error messages
-    let errorMessage = "Invalid credentials"
-
-    if (error.message?.includes("configuration")) {
-      errorMessage = "Service configuration error. Please contact support."
-    } else if (error.message?.includes("network") || error.message?.includes("fetch") || error.code === 0) {
-      errorMessage = "Network error. Please check your connection and try again."
-    } else if (error.code === 401) {
-      errorMessage = "Invalid email or password"
-    } else if (error.message?.includes("User not found in database")) {
-      errorMessage = "Account not found. Please sign up first."
-    } else if (error.code === 429) {
-      errorMessage = "Too many login attempts. Please try again later."
-    }
-
-    return { success: false, error: errorMessage }
-  }
-}
-
-export const logoutUser = async () => {
-  try {
-    await account.deleteSession("current")
-  } catch (error) {
-    console.error("Error during logout:", error)
-  }
-}
-
-export const getUser = async () => {
-  try {
-    if (!appwriteConfig.databaseId || !appwriteConfig.userCollectionId) {
-      throw new Error("Database configuration is missing")
-    }
-
-    const user = await account.get()
-    if (!user) return null
-
-    const { documents } = await database.listDocuments(appwriteConfig.databaseId, appwriteConfig.userCollectionId, [
-      Query.equal("accountId", user.$id),
-      Query.select(["firstName", "lastName", "email", "imageUrl", "university", "phone", "accountId"]),
-    ])
-
-    return documents.length > 0 ? documents[0] : null
-  } catch (error) {
-    console.error("Error fetching user:", error)
-    return null
-  }
-}
-
-export const getAllUsers = async (limit = 50, offset = 0) => {
-  try {
-    if (!appwriteConfig.databaseId || !appwriteConfig.userCollectionId) {
-      throw new Error("Database configuration is missing")
-    }
-
-    const { documents: users, total } = await database.listDocuments(
-      appwriteConfig.databaseId,
-      appwriteConfig.userCollectionId,
-      [Query.limit(limit), Query.offset(offset), Query.orderDesc("$createdAt")],
-    )
-
-    if (total === 0) return { users: [], total }
-    return { users, total }
-  } catch (error) {
-    console.error("Error fetching users:", error)
-    return { users: [], total: 0 }
-  }
-}
-
-export const createUserWithEmailPassword = async (
+// Create user with email and password - wrapper function for sign-up page
+export async function createUserWithEmailPassword(
   email: string,
   password: string,
   firstName: string,
   lastName: string,
-  phone: string,
-  university: string,
-) => {
+  phone?: string,
+  university?: string
+) {
   try {
-    if (!appwriteConfig.databaseId || !appwriteConfig.userCollectionId) {
-      throw new Error("Database configuration is missing")
-    }
-
-    // Create Appwrite account
-    const userAccount = await account.create(ID.unique(), email, password, `${firstName} ${lastName}`)
-
-    // Store user data in the database
-    const createdUser = await database.createDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.userCollectionId,
-      ID.unique(),
-      {
-        accountId: userAccount.$id,
-        email: userAccount.email,
-        firstName: firstName,
-        lastName: lastName,
-        phone: phone,
-        university: university,
-      },
-    )
-
-    // DON'T automatically log in the user after registration
-    // Let them manually sign in on the sign-in page
-
-    return { success: true, user: createdUser }
+    const result = await createUser({
+      firstName,
+      lastName,
+      email,
+      password,
+      phone,
+      university
+    })
+    
+    return { success: true, user: result }
   } catch (error: any) {
     console.error("Error creating user with email/password:", error)
-    return { success: false, error: error.message || "Failed to create account" }
+    return { success: false, error: error.message }
   }
 }
 
-// Function to check if user is authenticated
-export const getCurrentUser = async () => {
+// Sign in user
+export async function signInUser(email: string, password: string) {
   try {
-    const user = await account.get()
-    if (!user) return null
-
-    // Get user details from database
-    const dbUser = await getExistingUser(user.$id)
-    return dbUser
+    const session = await account.createEmailPasswordSession(email, password)
+    return session
   } catch (error) {
+    console.error("Error signing in:", error)
+    throw error
+  }
+}
+
+// Login with email and password - wrapper function for sign-in page
+export async function loginWithEmailPassword(email: string, password: string) {
+  try {
+    const session = await signInUser(email, password)
+    return { success: true, session }
+  } catch (error: any) {
+    console.error("Error logging in with email/password:", error)
+    return { success: false, error: error.message }
+  }
+}
+
+// Google OAuth login
+export async function loginWithGoogle() {
+  try {
+    // Redirect to Google OAuth
+    account.createOAuth2Session(
+      OAuthProvider.Google,
+      `${window.location.origin}/`, // Success redirect
+      `${window.location.origin}/signin` // Failure redirect
+    )
+  } catch (error) {
+    console.error("Error with Google login:", error)
+    throw error
+  }
+}
+
+// Get current user with role information
+export async function getCurrentUser(): Promise<DatabaseUser | null> {
+  try {
+    const currentAccount = await account.get()
+    if (!currentAccount) return null
+
+    // Get user document from database
+    const userDocuments = await databases.listDocuments(DATABASE_ID, USERS_COLLECTION_ID, [
+      Query.equal("accountId", currentAccount.$id),
+    ])
+
+    if (userDocuments.documents.length === 0) {
+      console.error("No user document found for account:", currentAccount.$id)
+      return null
+    }
+
+    const userDoc = userDocuments.documents[0] as unknown as DatabaseUser
+    return userDoc
+  } catch (error) {
+    console.error("Error getting current user:", error)
     return null
+  }
+}
+
+// Check if current user is admin
+export async function isCurrentUserAdmin(): Promise<boolean> {
+  try {
+    const user = await getCurrentUser()
+    return user?.role === "admin"
+  } catch (error) {
+    console.error("Error checking admin status:", error)
+    return false
+  }
+}
+
+// Update user role (admin only function)
+export async function updateUserRole(userId: string, role: "user" | "admin") {
+  try {
+    // First check if current user is admin
+    const isAdmin = await isCurrentUserAdmin()
+    if (!isAdmin) {
+      throw new Error("Unauthorized: Only admins can update user roles")
+    }
+
+    const updatedUser = await databases.updateDocument(DATABASE_ID, USERS_COLLECTION_ID, userId, { role })
+
+    return updatedUser as unknown as DatabaseUser
+  } catch (error) {
+    console.error("Error updating user role:", error)
+    throw error
+  }
+}
+
+// Get all users (admin only)
+export async function getAllUsers(limit = 100, offset = 0) {
+  try {
+    // Check if current user is admin
+    const isAdmin = await isCurrentUserAdmin()
+    if (!isAdmin) {
+      throw new Error("Unauthorized: Only admins can view all users")
+    }
+
+    const response = await databases.listDocuments(DATABASE_ID, USERS_COLLECTION_ID, [
+      Query.limit(limit),
+      Query.offset(offset),
+      Query.orderDesc("$createdAt"),
+    ])
+
+    return {
+      users: response.documents as unknown as DatabaseUser[],
+      total: response.total,
+    }
+  } catch (error) {
+    console.error("Error getting all users:", error)
+    throw error
+  }
+}
+
+// Update user profile
+export async function updateUserProfile(userId: string, updates: Partial<Omit<DatabaseUser, '$id' | '$createdAt' | '$updatedAt'>>) {
+  try {
+    const updatedUser = await databases.updateDocument(DATABASE_ID, USERS_COLLECTION_ID, userId, updates)
+
+    return updatedUser as unknown as DatabaseUser
+  } catch (error) {
+    console.error("Error updating user profile:", error)
+    throw error
+  }
+}
+
+// Logout user
+export async function logoutUser() {
+  try {
+    await account.deleteSession("current")
+  } catch (error) {
+    console.error("Error logging out:", error)
+    throw error
+  }
+}
+
+// Delete user account and database record
+export async function deleteUser(userId: string) {
+  try {
+    // Check if current user is admin
+    const isAdmin = await isCurrentUserAdmin()
+    if (!isAdmin) {
+      throw new Error("Unauthorized: Only admins can delete users")
+    }
+
+    // Delete user document from database
+    await databases.deleteDocument(DATABASE_ID, USERS_COLLECTION_ID, userId)
+
+    return { success: true }
+  } catch (error) {
+    console.error("Error deleting user:", error)
+    throw error
   }
 }

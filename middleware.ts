@@ -7,15 +7,21 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/signin", request.url))
   }
 
-  // Protect admin routes (in a real app, you'd check authentication)
+  // Protect admin routes - check for admin role
   if (request.nextUrl.pathname.startsWith("/admin")) {
-    // For demo purposes, we'll allow access
-    // In production, you'd check for valid admin session/token here
-    const isAuthenticated = true // Replace with actual auth check
+    // Get the session cookie to check if user is authenticated
+    const sessionCookie = request.cookies.get("a_session_console")
 
-    if (!isAuthenticated) {
-      return NextResponse.redirect(new URL("/signin", request.url))
+    if (!sessionCookie) {
+      // No session, redirect to signin
+      const signInUrl = new URL("/signin", request.url)
+      signInUrl.searchParams.set("redirect", request.nextUrl.pathname)
+      return NextResponse.redirect(signInUrl)
     }
+
+    // Note: We can't check the user's role here in middleware since we can't make async calls to Appwrite
+    // The role check will be done in the admin layout component
+    // This middleware just ensures the user has a session
   }
 
   // Add security headers

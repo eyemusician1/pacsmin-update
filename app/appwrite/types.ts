@@ -6,12 +6,10 @@ export interface User {
   email?: string
   phone?: string
   university?: string
-  imageUrl?: string
+  imageUrl?: string | null
+  role?: "user" | "admin" // Add role field
   $createdAt: string
   $updatedAt: string
-  $permissions: string[]
-  $collectionId: string
-  $databaseId: string
 }
 
 export interface Event {
@@ -21,11 +19,11 @@ export interface Event {
   date: string
   location: string
   imageUrl?: string
+  registrationRequired: boolean
+  maxAttendees?: number
+  currentAttendees: number
   $createdAt: string
   $updatedAt: string
-  $permissions: string[]
-  $collectionId: string
-  $databaseId: string
 }
 
 export interface StoreItem {
@@ -36,9 +34,7 @@ export interface StoreItem {
   imageUrl?: string
   category: string
   inStock: boolean
+  quantity: number
   $createdAt: string
   $updatedAt: string
-  $permissions: string[]
-  $collectionId: string
-  $databaseId: string
 }

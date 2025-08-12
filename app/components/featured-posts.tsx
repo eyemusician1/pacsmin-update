@@ -4,11 +4,11 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight, Calendar, User, ArrowRight, Eye, Heart, MessageCircle } from "lucide-react"
-import { useAppStore } from "@/lib/store"
+import useStore from "@/lib/store"
 
 export default function FeaturedPosts() {
   const sectionRef = useRef<HTMLDivElement>(null)
-  const { getFeaturedStories, getMoreStories } = useAppStore()
+  const { getFeaturedStories, getMoreStories } = useStore()
 
   const featuredStories = getFeaturedStories()
   const moreStories = getMoreStories()
@@ -89,7 +89,7 @@ export default function FeaturedPosts() {
   }, [])
 
   const getCategoryColor = useCallback((category: string) => {
-    const colors = {
+    const colors: Record<string, string> = {
       Research: "bg-blue-500",
       Achievement: "bg-yellow-500",
       News: "bg-green-500",
@@ -97,7 +97,7 @@ export default function FeaturedPosts() {
       Opportunity: "bg-orange-500",
       Alumni: "bg-pink-500",
     }
-    return colors[category as keyof typeof colors] || "bg-gray-500"
+    return colors[category] || "bg-gray-500"
   }, [])
 
   if (featuredStories.length === 0 && moreStories.length === 0) {
@@ -192,14 +192,18 @@ export default function FeaturedPosts() {
                                 </span>
                               </div>
                               <div className="absolute bottom-3 sm:bottom-4 right-3 sm:right-4 flex space-x-2 sm:space-x-4 text-white">
-                                <div className="flex items-center space-x-1 bg-black/50 rounded-full px-2 py-1">
-                                  <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  <span className="text-xs sm:text-sm">{post.views}</span>
-                                </div>
-                                <div className="flex items-center space-x-1 bg-black/50 rounded-full px-2 py-1">
-                                  <Heart className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  <span className="text-xs sm:text-sm">{post.likes}</span>
-                                </div>
+                                {post.views && (
+                                  <div className="flex items-center space-x-1 bg-black/50 rounded-full px-2 py-1">
+                                    <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    <span className="text-xs sm:text-sm">{post.views}</span>
+                                  </div>
+                                )}
+                                {post.likes && (
+                                  <div className="flex items-center space-x-1 bg-black/50 rounded-full px-2 py-1">
+                                    <Heart className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    <span className="text-xs sm:text-sm">{post.likes}</span>
+                                  </div>
+                                )}
                                 {post.comments && (
                                   <div className="hidden sm:flex items-center space-x-1 bg-black/50 rounded-full px-2 py-1">
                                     <MessageCircle className="h-4 w-4" />
@@ -373,7 +377,7 @@ export default function FeaturedPosts() {
                     onMouseEnter={() => setIsAutoPlaying(false)}
                     onMouseLeave={() => setIsAutoPlaying(true)}
                   >
-                    {moreStories.map((post, index) => (
+                    {moreStories.map((post, index: number) => (
                       <div key={post.id} className="w-full flex-shrink-0">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                           {moreStories.slice(index, index + 3).map((slidePost) => (
