@@ -43,7 +43,7 @@ export default function AdminDashboard() {
     const fetchDashboardData = async () => {
       try {
         const { users, total } = await getAllUsers(100, 0)
-        
+
         // Type assertion to ensure users is User[]
         const typedUsers = users as User[]
 
@@ -52,13 +52,9 @@ export default function AdminDashboard() {
         const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
         const twoMonthsAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)
 
-        const newUsersThisWeek = typedUsers.filter((user: User) => 
-          new Date(user.$createdAt) > oneWeekAgo
-        ).length
+        const newUsersThisWeek = typedUsers.filter((user: User) => new Date(user.$createdAt) > oneWeekAgo).length
 
-        const newUsersThisMonth = typedUsers.filter((user: User) => 
-          new Date(user.$createdAt) > oneMonthAgo
-        ).length
+        const newUsersThisMonth = typedUsers.filter((user: User) => new Date(user.$createdAt) > oneMonthAgo).length
 
         const newUsersLastMonth = typedUsers.filter((user: User) => {
           const createdAt = new Date(user.$createdAt)
@@ -109,6 +105,7 @@ export default function AdminDashboard() {
   if (isLoading) {
     return (
       <div className="space-y-6">
+        
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
             <Card key={i} className="animate-pulse">
@@ -125,6 +122,8 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Add debug component at the top - REMOVE THIS AFTER DEBUGGING */}
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -314,7 +313,7 @@ export default function AdminDashboard() {
           <CardDescription>Common administrative tasks</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-3">
             <Button variant="outline" className="h-20 flex-col space-y-2 bg-transparent">
               <Users className="h-6 w-6" />
               <span>Manage Users</span>
@@ -325,11 +324,7 @@ export default function AdminDashboard() {
             </Button>
             <Button variant="outline" className="h-20 flex-col space-y-2 bg-transparent">
               <FileText className="h-6 w-6" />
-              <span>Add Content</span>
-            </Button>
-            <Button variant="outline" className="h-20 flex-col space-y-2 bg-transparent">
-              <Activity className="h-6 w-6" />
-              <span>View Analytics</span>
+              <span>Manage Store</span>
             </Button>
           </div>
         </CardContent>

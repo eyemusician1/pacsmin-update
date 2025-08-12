@@ -1,336 +1,149 @@
-// ============= FIXED LAYOUT.TSX =============
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import type React from "react"
+
+import { useState } from "react"
+import  AdminGuard  from "@/app/components/admin-guard" // Fixed import path
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  Users,
-  TrendingUp,
-  Calendar,
-  FileText,
-  Activity,
-  Plus,
-  ArrowUpRight,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  UserPlus,
-} from "lucide-react"
-import { getAllUsers } from "../appwrite/auth"
-import type { User } from "../appwrite/types"
+import { cn } from "@/lib/utils"
+import { Users, Calendar, Store, BarChart3, Menu, X, Home, LogOut } from "lucide-react"
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation" // Added useRouter
+import { logoutUser } from "@/app/appwrite/auth" // Added logout function
+import { useUser } from "@/app/context/userContext" // Added user context
 
-interface DashboardStats {
-  totalUsers: number
-  newUsersThisWeek: number
-  newUsersThisMonth: number
-  growthPercentage: number
-  recentUsers: User[]
-}
+const navigation = [
+  { name: "Dashboard", href: "/admin", icon: Home },
+  { name: "Users", href: "/admin/users", icon: Users },
+  { name: "Events", href: "/admin/events", icon: Calendar },
+  { name: "Store", href: "/admin/store", icon: Store },
+]
 
-export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalUsers: 0,
-    newUsersThisWeek: 0,
-    newUsersThisMonth: 0,
-    growthPercentage: 0,
-    recentUsers: [],
-  })
-  const [isLoading, setIsLoading] = useState(true)
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const pathname = usePathname()
+  const router = useRouter()
+  const { user, refreshUser } = useUser() // Get user info
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const { users, total } = await getAllUsers(100, 0)
-        
-        // Type assertion to ensure users is User[]
-        const typedUsers = users as User[]
-
-        const now = new Date()
-        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-        const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        const twoMonthsAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)
-
-        const newUsersThisWeek = typedUsers.filter((user: User) => 
-          new Date(user.$createdAt) > oneWeekAgo
-        ).length
-
-        const newUsersThisMonth = typedUsers.filter((user: User) => 
-          new Date(user.$createdAt) > oneMonthAgo
-        ).length
-
-        const newUsersLastMonth = typedUsers.filter((user: User) => {
-          const createdAt = new Date(user.$createdAt)
-          return createdAt > twoMonthsAgo && createdAt <= oneMonthAgo
-        }).length
-
-        const growthPercentage =
-          newUsersLastMonth > 0
-            ? ((newUsersThisMonth - newUsersLastMonth) / newUsersLastMonth) * 100
-            : newUsersThisMonth > 0
-              ? 100
-              : 0
-
-        const recentUsers = typedUsers.slice(0, 5)
-
-        setStats({
-          totalUsers: total,
-          newUsersThisWeek,
-          newUsersThisMonth,
-          growthPercentage: Math.round(growthPercentage),
-          recentUsers,
-        })
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error)
-      } finally {
-        setIsLoading(false)
-      }
+  // Proper logout function
+  const handleLogout = async () => {
+    try {
+      await logoutUser()
+      await refreshUser() // Refresh user context to clear user data
+      router.push("/signin")
+    } catch (error) {
+      console.error("Logout error:", error)
+      // Force redirect even if logout fails
+      router.push("/signin")
     }
-
-    fetchDashboardData()
-  }, [])
-
-  const activities = [
-    { id: 1, type: "user", message: "New user registration", time: "2 minutes ago", icon: UserPlus },
-    { id: 2, type: "system", message: "Database backup completed", time: "1 hour ago", icon: CheckCircle },
-    { id: 3, type: "event", message: "New event created", time: "3 hours ago", icon: Calendar },
-    { id: 4, type: "content", message: "Content updated", time: "5 hours ago", icon: FileText },
-    { id: 5, type: "system", message: "System maintenance scheduled", time: "1 day ago", icon: AlertCircle },
-  ]
-
-  const systemStatus = [
-    { name: "Database", status: "operational", uptime: "99.9%" },
-    { name: "Authentication", status: "operational", uptime: "99.8%" },
-    { name: "File Storage", status: "operational", uptime: "99.7%" },
-    { name: "Email Service", status: "maintenance", uptime: "98.5%" },
-  ]
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-8 bg-gray-200 rounded w-1/2"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-navy-800">Dashboard</h1>
-          <p className="text-navy-600 mt-1">Welcome to your PACSMIN admin panel</p>
-        </div>
-        <div className="flex space-x-2">
-          <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-            <Plus className="h-4 w-4 mr-2" />
-            Quick Action
-          </Button>
-        </div>
-      </div>
+    <AdminGuard>
+      <div className="min-h-screen bg-gray-50">
+        {/* Mobile sidebar overlay */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        )}
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-700">Total Users</p>
-                <p className="text-3xl font-bold text-blue-900">{stats.totalUsers}</p>
-              </div>
-              <div className="h-12 w-12 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Users className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm">
-              <TrendingUp className="h-4 w-4 text-green-600 mr-1" />
-              <span className="text-green-600 font-medium">+{stats.growthPercentage}%</span>
-              <span className="text-blue-700 ml-1">from last month</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-green-700">New This Week</p>
-                <p className="text-3xl font-bold text-green-900">{stats.newUsersThisWeek}</p>
-              </div>
-              <div className="h-12 w-12 bg-green-600 rounded-lg flex items-center justify-center">
-                <UserPlus className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm">
-              <ArrowUpRight className="h-4 w-4 text-green-600 mr-1" />
-              <span className="text-green-700">Active growth</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-purple-700">This Month</p>
-                <p className="text-3xl font-bold text-purple-900">{stats.newUsersThisMonth}</p>
-              </div>
-              <div className="h-12 w-12 bg-purple-600 rounded-lg flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm">
-              <Clock className="h-4 w-4 text-purple-600 mr-1" />
-              <span className="text-purple-700">Monthly target</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-orange-700">System Health</p>
-                <p className="text-3xl font-bold text-orange-900">98.9%</p>
-              </div>
-              <div className="h-12 w-12 bg-orange-600 rounded-lg flex items-center justify-center">
-                <Activity className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm">
-              <CheckCircle className="h-4 w-4 text-green-600 mr-1" />
-              <span className="text-orange-700">All systems operational</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Recent Users */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-navy-800">Recent Users</CardTitle>
-            <CardDescription>Latest user registrations</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {stats.recentUsers.map((user) => (
-                <div
-                  key={user.$id}
-                  className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={user.imageUrl || "/placeholder.svg"} alt={`${user.firstName} ${user.lastName}`} />
-                    <AvatarFallback className="bg-blue-600 text-white">
-                      {user.firstName?.[0] || ""}
-                      {user.lastName?.[0] || ""}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-navy-800 truncate">
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <p className="text-xs text-navy-600 truncate">{user.email}</p>
-                    {user.university && <p className="text-xs text-blue-600 truncate">{user.university}</p>}
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-navy-500">{new Date(user.$createdAt).toLocaleDateString()}</p>
-                    <Badge variant="secondary" className="text-xs">
-                      New
-                    </Badge>
-                  </div>
+        {/* Sidebar */}
+        <div
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
+            sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          )}
+        >
+          <div className="flex flex-col h-full">
+            {/* Logo */}
+            <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-white" />
                 </div>
-              ))}
+                <span className="text-xl font-bold text-gray-900">PACSMIN</span>
+              </div>
+              <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(false)}>
+                <X className="w-5 h-5" />
+              </Button>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Activity Feed */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-navy-800">Recent Activity</CardTitle>
-            <CardDescription>System and user activities</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {activities.map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3">
-                  <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <activity.icon className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-navy-800">{activity.message}</p>
-                    <p className="text-xs text-navy-500">{activity.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* System Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-navy-800">System Status</CardTitle>
-          <CardDescription>Current operational status of all services</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {systemStatus.map((service) => (
-              <div key={service.name} className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-navy-800">{service.name}</h4>
-                  <Badge
-                    variant={service.status === "operational" ? "default" : "secondary"}
-                    className={
-                      service.status === "operational" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                    }
+            {/* Navigation */}
+            <nav className="flex-1 px-4 py-6 space-y-2">
+              {navigation.map((item) => {
+                const isActive = pathname === item.href
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
+                        : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
+                    )}
+                    onClick={() => setSidebarOpen(false)}
                   >
-                    {service.status}
-                  </Badge>
-                </div>
-                <p className="text-sm text-navy-600">Uptime: {service.uptime}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+                    <item.icon className="w-5 h-5" />
+                    <span>{item.name}</span>
+                  </Link>
+                )
+              })}
+            </nav>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-navy-800">Quick Actions</CardTitle>
-          <CardDescription>Common administrative tasks</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Button variant="outline" className="h-20 flex-col space-y-2 bg-transparent">
-              <Calendar className="h-6 w-6" />
-              <span>Create Event</span>
-            </Button>
-            <Button variant="outline" className="h-20 flex-col space-y-2 bg-transparent">
-              <FileText className="h-6 w-6" />
-              <span>Add Content</span>
-            </Button>
-            <Button variant="outline" className="h-20 flex-col space-y-2 bg-transparent">
-              <Activity className="h-6 w-6" />
-              <span>View Analytics</span>
-            </Button>
+            {/* User Info & Footer */}
+            <div className="p-4 border-t border-gray-200">
+              {/* User Info */}
+              {user && (
+                <div className="mb-3 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-sm font-medium text-gray-900">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  <p className="text-xs text-gray-500">{user.email}</p>
+                  <p className="text-xs text-blue-600 font-medium">
+                    Role: {user.role}
+                  </p>
+                </div>
+              )}
+              
+              {/* Logout Button */}
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                onClick={handleLogout}
+              >
+                <LogOut className="w-5 h-5 mr-3" />
+                Sign Out
+              </Button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+
+        {/* Main content */}
+        <div className="lg:pl-64">
+          {/* Top bar */}
+          <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between">
+              <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
+                <Menu className="w-5 h-5" />
+              </Button>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-500">Admin Panel</span>
+                {/* Debug info - you can remove this later */}
+                <span className="text-xs text-blue-600">
+                  User: {user?.firstName} | Role: {user?.role}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Page content */}
+          <main className="p-4 sm:p-6 lg:p-8">{children}</main>
+        </div>
+      </div>
+    </AdminGuard>
   )
 }

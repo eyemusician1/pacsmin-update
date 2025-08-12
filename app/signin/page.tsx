@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,8 +12,8 @@ import { Separator } from "@/components/ui/separator"
 import { Eye, EyeOff, Mail, Lock, ArrowLeft, Chrome } from "lucide-react"
 import MoleculeBackground from "../components/molecule-background"
 import { loginWithGoogle, loginWithEmailPassword } from "../appwrite/auth"
-import { useRouter } from "next/navigation"
-import { useUser } from "../context/userContext" // Adjusted import path
+import { useRouter, useSearchParams } from "next/navigation"
+import { useUser } from "../context/userContext"
 
 export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -22,45 +22,130 @@ export default function SignInPage() {
     password: "",
   })
   const [isLoading, setIsLoading] = useState(false)
-  const { refreshUser } = useUser()
+  const [error, setError] = useState("")
+  const { user, refreshUser } = useUser()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get("redirect") || "/"
+
+  // Auto-redirect if user is already logged in and is admin trying to access admin
+  useEffect(() => {
+    if (user && !isLoading) {
+      console.log("👤 User already logged in:", { 
+        id: user.$id, 
+        role: user.role, 
+        redirectTo 
+      })
+      
+      // Use a small timeout to ensure the redirect happens
+      const redirectTimer = setTimeout(() => {
+        // If user is already logged in and trying to access admin routes
+        if (redirectTo.includes('/admin') && user.role === 'admin') {
+          console.log("🚀 Admin user already logged in, redirecting to admin")
+          router.push('/admin')
+          return
+        }
+        
+        // If regular user is already logged in
+        if (!redirectTo.includes('/admin')) {
+          console.log("🏠 Regular user already logged in, redirecting")
+          router.push(redirectTo)
+          return
+        }
+        
+        // If non-admin user trying to access admin, redirect to home
+        if (redirectTo.includes('/admin') && user.role !== 'admin') {
+          console.log("🚫 Non-admin user trying to access admin, redirecting to home")
+          router.push('/')
+          return
+        }
+      }, 100) // Small delay to ensure proper redirect
+      
+      return () => clearTimeout(redirectTimer)
+    }
+  }, [user, redirectTo, router, isLoading])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     })
+    // Clear error when user starts typing
+    if (error) setError("")
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError("")
 
     try {
-      const result = await loginWithEmailPassword(formData.email, formData.password)
+      console.log("🔑 Attempting login with:", { 
+        email: formData.email, 
+        redirectTo,
+        isAdminRoute: redirectTo.includes('/admin')
+      })
       
+      const result = await loginWithEmailPassword(formData.email, formData.password)
+
       if (result.success) {
-        await refreshUser() // Refresh user context
-        alert("Successfully signed in!")
-        router.push("/") // Redirect to home page
+        console.log("✅ Login successful, refreshing user context...")
+        
+        // Refresh user context to get updated user data with role
+        await refreshUser()
+        
+        // Wait a bit longer for admin routes to ensure role is properly loaded
+        const delay = redirectTo.includes('/admin') ? 1500 : 500
+        
+        console.log(`⏳ Waiting ${delay}ms before checking user role and redirecting...`)
+        
+        setTimeout(() => {
+          console.log("🚀 Delay completed, redirecting to:", redirectTo)
+          
+          // For admin routes, the AdminGuard will handle the role verification
+          // We just redirect and let the guard do its job
+          router.push(redirectTo)
+        }, delay)
+        
       } else {
-        alert(`Sign in failed: ${result.error}`)
+        console.error("❌ Login failed:", result.error)
+        setError(result.error || "Sign in failed. Please try again.")
+        setIsLoading(false)
       }
     } catch (error: any) {
-      console.error("Unexpected error during sign in:", error)
-      alert(`An unexpected error occurred: ${error.message || "Please try again."}`)
-    } finally {
+      console.error("💥 Unexpected error during sign in:", error)
+      setError("An unexpected error occurred. Please try again.")
       setIsLoading(false)
     }
   }
 
   const handleGoogleLogin = async () => {
+    setError("")
     try {
       await loginWithGoogle()
     } catch (error: any) {
       console.error("Google login error:", error)
-      alert(`Google login failed: ${error.message || "Please try again."}`)
+      setError("Google login failed. Please try again.")
     }
+  }
+
+  // Show loading state if user is being auto-redirected (but only for a short time)
+  if (user && redirectTo.includes('/admin') && user.role === 'admin') {
+    // Add a failsafe - if stuck here for more than 3 seconds, force redirect
+    setTimeout(() => {
+      console.log("⚠️ Failsafe redirect triggered")
+      window.location.href = '/admin'
+    }, 3000)
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Redirecting to admin dashboard...</p>
+          <p className="mt-2 text-xs text-gray-500">If this takes too long, <a href="/admin" className="text-blue-600 underline">click here</a></p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -83,10 +168,31 @@ export default function SignInPage() {
               <div className="relative"></div>
             </div>
             <CardTitle className="text-2xl sm:text-3xl font-bold text-navy-800 mb-2">Welcome Back</CardTitle>
-            <p className="text-sm sm:text-base text-navy-600 leading-relaxed px-2">Sign in to your PACSMIN account</p>
+            <p className="text-sm sm:text-base text-navy-600 leading-relaxed px-2">
+              Sign in to your PACSMIN account
+              {redirectTo.includes('/admin') && (
+                <span className="block mt-1 text-xs text-blue-600 font-medium">
+                  🔐 Admin access required
+                </span>
+              )}
+            </p>
           </CardHeader>
 
           <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6 pb-6">
+            {/* Error Message */}
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* Debug info for development */}
+            {process.env.NODE_ENV === "development" && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg text-xs">
+                <strong>Debug:</strong> Redirect to: {redirectTo} | Current user role: {user?.role || 'none'}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-navy-700">
@@ -127,7 +233,7 @@ export default function SignInPage() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-3 text-navy-400 hover:text-navy-600 touch-manipulation"
-                    style={{ minHeight: '24px', minWidth: '24px' }}
+                    style={{ minHeight: "24px", minWidth: "24px" }}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -138,9 +244,13 @@ export default function SignInPage() {
                 type="submit"
                 disabled={isLoading}
                 className="w-full bg-gradient-to-r from-navy-600 to-blue-600 hover:from-navy-700 hover:to-blue-700 text-white py-3 h-12 text-base sm:text-lg font-semibold rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation active:scale-95"
-                style={{ minHeight: '48px', touchAction: 'manipulation' }}
+                style={{ minHeight: "48px", touchAction: "manipulation" }}
               >
-                {isLoading ? "Signing In..." : "Sign In"}
+                {isLoading ? (
+                  redirectTo.includes('/admin') ? "Verifying Admin Access..." : "Signing In..."
+                ) : (
+                  "Sign In"
+                )}
               </Button>
             </form>
 
@@ -157,7 +267,8 @@ export default function SignInPage() {
               variant="outline"
               className="w-full h-12 text-base sm:text-lg font-semibold rounded-xl shadow-md border-navy-200 hover:bg-navy-50 transition-all duration-300 flex items-center justify-center gap-2 bg-transparent touch-manipulation active:scale-95"
               onClick={handleGoogleLogin}
-              style={{ minHeight: '48px', touchAction: 'manipulation' }}
+              style={{ minHeight: "48px", touchAction: "manipulation" }}
+              disabled={isLoading}
             >
               <Chrome className="h-5 w-5" />
               Sign in with Google
