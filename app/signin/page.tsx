@@ -28,40 +28,26 @@ export default function SignInPage() {
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get("redirect") || "/"
 
-  // Auto-redirect if user is already logged in and is admin trying to access admin
+  // Check if user is already logged in
   useEffect(() => {
     if (user && !isLoading) {
-      console.log("👤 User already logged in:", { 
-        id: user.$id, 
-        role: user.role, 
-        redirectTo 
+      console.log("👤 User already logged in:", {
+        id: user.$id,
+        role: user.role,
+        redirectTo,
       })
-      
-      // Use a small timeout to ensure the redirect happens
-      const redirectTimer = setTimeout(() => {
-        // If user is already logged in and trying to access admin routes
-        if (redirectTo.includes('/admin') && user.role === 'admin') {
-          console.log("🚀 Admin user already logged in, redirecting to admin")
-          router.push('/admin')
-          return
-        }
-        
-        // If regular user is already logged in
-        if (!redirectTo.includes('/admin')) {
-          console.log("🏠 Regular user already logged in, redirecting")
-          router.push(redirectTo)
-          return
-        }
-        
-        // If non-admin user trying to access admin, redirect to home
-        if (redirectTo.includes('/admin') && user.role !== 'admin') {
-          console.log("🚫 Non-admin user trying to access admin, redirecting to home")
-          router.push('/')
-          return
-        }
-      }, 100) // Small delay to ensure proper redirect
-      
-      return () => clearTimeout(redirectTimer)
+
+      // If user is already logged in, redirect them
+      if (redirectTo.includes("/admin") && user.role === "admin") {
+        console.log("🚀 Admin user already logged in, redirecting to admin")
+        router.replace("/admin")
+      } else if (!redirectTo.includes("/admin")) {
+        console.log("🏠 Regular user already logged in, redirecting")
+        router.replace(redirectTo)
+      } else if (redirectTo.includes("/admin") && user.role !== "admin") {
+        console.log("🚫 Non-admin user trying to access admin, redirecting to home")
+        router.replace("/")
+      }
     }
   }, [user, redirectTo, router, isLoading])
 
@@ -80,33 +66,24 @@ export default function SignInPage() {
     setError("")
 
     try {
-      console.log("🔑 Attempting login with:", { 
-        email: formData.email, 
+      console.log("🔑 Attempting login with:", {
+        email: formData.email,
         redirectTo,
-        isAdminRoute: redirectTo.includes('/admin')
+        isAdminRoute: redirectTo.includes("/admin"),
       })
-      
+
       const result = await loginWithEmailPassword(formData.email, formData.password)
 
       if (result.success) {
         console.log("✅ Login successful, refreshing user context...")
-        
+
         // Refresh user context to get updated user data with role
         await refreshUser()
-        
-        // Wait a bit longer for admin routes to ensure role is properly loaded
-        const delay = redirectTo.includes('/admin') ? 1500 : 500
-        
-        console.log(`⏳ Waiting ${delay}ms before checking user role and redirecting...`)
-        
-        setTimeout(() => {
-          console.log("🚀 Delay completed, redirecting to:", redirectTo)
-          
-          // For admin routes, the AdminGuard will handle the role verification
-          // We just redirect and let the guard do its job
-          router.push(redirectTo)
-        }, delay)
-        
+
+        console.log("🚀 Login complete, redirecting to:", redirectTo)
+
+        // Use replace instead of push to avoid back button issues
+        router.replace(redirectTo)
       } else {
         console.error("❌ Login failed:", result.error)
         setError(result.error || "Sign in failed. Please try again.")
@@ -129,20 +106,13 @@ export default function SignInPage() {
     }
   }
 
-  // Show loading state if user is being auto-redirected (but only for a short time)
-  if (user && redirectTo.includes('/admin') && user.role === 'admin') {
-    // Add a failsafe - if stuck here for more than 3 seconds, force redirect
-    setTimeout(() => {
-      console.log("⚠️ Failsafe redirect triggered")
-      window.location.href = '/admin'
-    }, 3000)
-
+  // Don't show the form if user is already logged in and being redirected
+  if (user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Redirecting to admin dashboard...</p>
-          <p className="mt-2 text-xs text-gray-500">If this takes too long, <a href="/admin" className="text-blue-600 underline">click here</a></p>
+          <p className="mt-4 text-gray-600">Already signed in. Redirecting...</p>
         </div>
       </div>
     )
@@ -170,10 +140,8 @@ export default function SignInPage() {
             <CardTitle className="text-2xl sm:text-3xl font-bold text-navy-800 mb-2">Welcome Back</CardTitle>
             <p className="text-sm sm:text-base text-navy-600 leading-relaxed px-2">
               Sign in to your PACSMIN account
-              {redirectTo.includes('/admin') && (
-                <span className="block mt-1 text-xs text-blue-600 font-medium">
-                  🔐 Admin access required
-                </span>
+              {redirectTo.includes("/admin") && (
+                <span className="block mt-1 text-xs text-blue-600 font-medium">🔐 Admin access required</span>
               )}
             </p>
           </CardHeader>
@@ -181,16 +149,7 @@ export default function SignInPage() {
           <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6 pb-6">
             {/* Error Message */}
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
-
-            {/* Debug info for development */}
-            {process.env.NODE_ENV === "development" && (
-              <div className="p-3 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg text-xs">
-                <strong>Debug:</strong> Redirect to: {redirectTo} | Current user role: {user?.role || 'none'}
-              </div>
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -246,11 +205,11 @@ export default function SignInPage() {
                 className="w-full bg-gradient-to-r from-navy-600 to-blue-600 hover:from-navy-700 hover:to-blue-700 text-white py-3 h-12 text-base sm:text-lg font-semibold rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation active:scale-95"
                 style={{ minHeight: "48px", touchAction: "manipulation" }}
               >
-                {isLoading ? (
-                  redirectTo.includes('/admin') ? "Verifying Admin Access..." : "Signing In..."
-                ) : (
-                  "Sign In"
-                )}
+                {isLoading
+                  ? redirectTo.includes("/admin")
+                    ? "Verifying Admin Access..."
+                    : "Signing In..."
+                  : "Sign In"}
               </Button>
             </form>
 

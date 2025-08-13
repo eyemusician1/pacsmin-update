@@ -28,13 +28,14 @@ export interface Event {
 
 export interface StoreItem {
   $id: string
-  name: string
-  description: string
-  price: number
-  imageUrl?: string
-  category: string
-  inStock: boolean
-  quantity: number
   $createdAt: string
   $updatedAt: string
+  name: string
+  description?: string
+  price: number
+  payment_link?: string
+  category?: string
+  stock?: number
+  isActive?: boolean
+  imageUrl?: string
 }

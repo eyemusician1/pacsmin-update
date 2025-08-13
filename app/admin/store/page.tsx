@@ -15,7 +15,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Package,
@@ -23,71 +22,96 @@ import {
   TrendingUp,
   Plus,
   Search,
-  Filter,
   Edit,
   Trash2,
   Eye,
   RefreshCw,
-  AlertTriangle,
+  ExternalLink,
+  Link,
+  AlertCircle,
 } from "lucide-react"
 import { getAllStoreItems, createStoreItem, updateStoreItem, deleteStoreItem } from "../../appwrite/database"
 import type { StoreItem } from "../../appwrite/types"
+import { useUser } from "../../context/userContext"
 
 interface StoreStats {
   totalProducts: number
-  inStock: number
-  outOfStock: number
   totalValue: number
+  withPaymentLinks: number
+  averagePrice: number
 }
 
 export default function StorePage() {
+  const { user } = useUser()
   const [products, setProducts] = useState<StoreItem[]>([])
   const [filteredProducts, setFilteredProducts] = useState<StoreItem[]>([])
   const [stats, setStats] = useState<StoreStats>({
     totalProducts: 0,
-    inStock: 0,
-    outOfStock: 0,
     totalValue: 0,
+    withPaymentLinks: 0,
+    averagePrice: 0,
   })
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterCategory, setFilterCategory] = useState("all")
-  const [filterStock, setFilterStock] = useState("all")
   const [selectedProduct, setSelectedProduct] = useState<StoreItem | null>(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [newProduct, setNewProduct] = useState<Partial<StoreItem>>({
     name: "",
     description: "",
     price: 0,
-    category: "",
-    inStock: true,
-    quantity: 0,
+    payment_link: "",
   })
 
   const fetchProducts = async () => {
     setIsLoading(true)
+    setError(null)
     try {
+      console.log("🔄 Fetching products...")
+      console.log("👤 Current user:", user ? { id: user.$id, role: user.role, email: user.email } : "No user")
+
       const { items: fetchedItems, total } = await getAllStoreItems(100, 0)
+
+      console.log("📦 Fetched products:", fetchedItems)
       setProducts(fetchedItems)
       setFilteredProducts(fetchedItems)
 
       // Calculate statistics
-      const inStock = fetchedItems.filter((item) => item.inStock && item.quantity > 0).length
-      const outOfStock = fetchedItems.filter((item) => !item.inStock || item.quantity === 0).length
-      const totalValue = fetchedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+      const totalValue = fetchedItems.reduce((sum, item) => sum + (item.price || 0), 0)
+      const withPaymentLinks = fetchedItems.filter(
+        (item) => item.payment_link && item.payment_link.trim() !== "",
+      ).length
+      const averagePrice = fetchedItems.length > 0 ? totalValue / fetchedItems.length : 0
 
       setStats({
         totalProducts: total,
-        inStock,
-        outOfStock,
         totalValue,
+        withPaymentLinks,
+        averagePrice,
+      })
+
+      console.log("📊 Stats calculated:", {
+        totalProducts: total,
+        totalValue,
+        withPaymentLinks,
+        averagePrice,
       })
     } catch (error) {
-      console.error("Error fetching store items:", error)
+      console.error("💥 Error fetching store items:", error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to fetch products"
+      setError(errorMessage)
       // Keep empty state on error
       setProducts([])
       setFilteredProducts([])
+      setStats({
+        totalProducts: 0,
+        totalValue: 0,
+        withPaymentLinks: 0,
+        averagePrice: 0,
+      })
     } finally {
       setIsLoading(false)
     }
@@ -98,65 +122,119 @@ export default function StorePage() {
   }, [])
 
   const handleCreateProduct = async () => {
+    if (isCreating) return // Prevent double submission
+
     try {
-      if (!newProduct.name || !newProduct.price || !newProduct.category) {
-        alert("Please fill in all required fields")
+      setIsCreating(true)
+      setError(null)
+
+      console.log("🛍️ Starting product creation...")
+      console.log("👤 Current user:", user ? { id: user.$id, role: user.role, email: user.email } : "No user")
+
+      // Validate required fields
+      if (!newProduct.name?.trim()) {
+        setError("Product name is required")
         return
       }
 
-      await createStoreItem({
-        name: newProduct.name,
-        description: newProduct.description || "",
-        price: newProduct.price,
-        category: newProduct.category,
-        inStock: newProduct.inStock || true,
-        quantity: newProduct.quantity || 0,
-        imageUrl: newProduct.imageUrl,
-      })
+      if (!newProduct.price || newProduct.price <= 0) {
+        setError("Price must be greater than 0")
+        return
+      }
 
-      setIsCreateDialogOpen(false)
+      console.log("🛍️ Creating product with data:", newProduct)
+
+      const productData = {
+        name: newProduct.name.trim(),
+        description: newProduct.description?.trim() || "",
+        price: Number(newProduct.price),
+        payment_link: newProduct.payment_link?.trim() || "",
+      }
+
+      console.log("📦 Final product data:", productData)
+
+      const createdProduct = await createStoreItem(productData)
+      console.log("✅ Product created successfully:", createdProduct)
+
+      // Reset form and close dialog
       setNewProduct({
         name: "",
         description: "",
         price: 0,
-        category: "",
-        inStock: true,
-        quantity: 0,
+        payment_link: "",
       })
+      setIsCreateDialogOpen(false)
 
       // Refresh products list
       await fetchProducts()
+
+      console.log("🎉 Product creation completed!")
     } catch (error) {
-      console.error("Error creating product:", error)
-      alert("Failed to create product. Please try again.")
+      console.error("💥 Error creating product:", error)
+
+      // Show more detailed error message
+      let errorMessage = "Failed to create product. "
+      if (error instanceof Error) {
+        errorMessage += error.message
+      } else {
+        errorMessage += "Please check your internet connection and try again."
+      }
+
+      // Check for specific Appwrite errors
+      const appwriteError = error as any
+      if (appwriteError?.code === 401) {
+        errorMessage = "The current user is not authorized to perform the requested action."
+      } else if (appwriteError?.code === 404) {
+        errorMessage = "Store collection not found. Please check your database configuration."
+      } else if (appwriteError?.type === "document_invalid_structure") {
+        errorMessage = "Invalid product data structure. Please check all required fields."
+      }
+
+      setError(errorMessage)
+    } finally {
+      setIsCreating(false)
     }
   }
 
   const handleUpdateProduct = async () => {
+    if (isUpdating) return // Prevent double submission
+
     try {
-      if (!selectedProduct || !selectedProduct.name) {
-        alert("Please fill in all required fields")
+      setIsUpdating(true)
+      setError(null)
+
+      if (!selectedProduct || !selectedProduct.name?.trim() || !selectedProduct.price || selectedProduct.price <= 0) {
+        setError("Please fill in all required fields (Name and Price must be greater than 0)")
         return
       }
 
-      await updateStoreItem(selectedProduct.$id, {
-        name: selectedProduct.name,
-        description: selectedProduct.description,
-        price: selectedProduct.price,
-        category: selectedProduct.category,
-        inStock: selectedProduct.inStock,
-        quantity: selectedProduct.quantity,
-        imageUrl: selectedProduct.imageUrl,
-      })
+      console.log("🔄 Updating product:", selectedProduct.$id)
+
+      const updateData = {
+        name: selectedProduct.name.trim(),
+        description: selectedProduct.description?.trim() || "",
+        price: Number(selectedProduct.price),
+        payment_link: selectedProduct.payment_link?.trim() || "",
+      }
+
+      console.log("📦 Update data:", updateData)
+
+      const updatedProduct = await updateStoreItem(selectedProduct.$id, updateData)
+      console.log("✅ Product updated successfully:", updatedProduct)
 
       setIsEditDialogOpen(false)
       setSelectedProduct(null)
 
       // Refresh products list
       await fetchProducts()
+
+      console.log("🎉 Product update completed!")
     } catch (error) {
-      console.error("Error updating product:", error)
-      alert("Failed to update product. Please try again.")
+      console.error("💥 Error updating product:", error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to update product. Please try again."
+      setError(errorMessage)
+    } finally {
+      setIsUpdating(false)
     }
   }
 
@@ -166,13 +244,20 @@ export default function StorePage() {
     }
 
     try {
+      setError(null)
+      console.log("🗑️ Deleting product:", productId)
+
       await deleteStoreItem(productId)
+      console.log("✅ Product deleted successfully")
 
       // Refresh products list
       await fetchProducts()
+
+      console.log("🎉 Product deletion completed!")
     } catch (error) {
-      console.error("Error deleting product:", error)
-      alert("Failed to delete product. Please try again.")
+      console.error("💥 Error deleting product:", error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete product. Please try again."
+      setError(errorMessage)
     }
   }
 
@@ -183,30 +268,21 @@ export default function StorePage() {
     if (searchTerm) {
       filtered = filtered.filter(
         (product) =>
-          product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.description.toLowerCase().includes(searchTerm.toLowerCase()),
+          product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          product.description?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
-    // Apply category filter
-    if (filterCategory !== "all") {
-      filtered = filtered.filter((product) => product.category.toLowerCase() === filterCategory.toLowerCase())
-    }
-
-    // Apply stock filter
-    if (filterStock === "in-stock") {
-      filtered = filtered.filter((product) => product.inStock && product.quantity > 0)
-    } else if (filterStock === "out-of-stock") {
-      filtered = filtered.filter((product) => !product.inStock || product.quantity === 0)
-    }
-
     setFilteredProducts(filtered)
-  }, [products, searchTerm, filterCategory, filterStock])
+  }, [products, searchTerm])
 
-  const getUniqueCategories = () => {
-    const categories = products.map((product) => product.category)
-    return [...new Set(categories)]
+  const isValidUrl = (string: string) => {
+    try {
+      new URL(string)
+      return true
+    } catch (_) {
+      return false
+    }
   }
 
   if (isLoading) {
@@ -241,7 +317,12 @@ export default function StorePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-navy-800">Store Management</h1>
-          <p className="text-navy-600 mt-1">Manage PACSMIN store products and inventory</p>
+          <p className="text-navy-600 mt-1">Manage PACSMIN store products and payment links</p>
+          {user && (
+            <p className="text-sm text-gray-500 mt-1">
+              Logged in as: {user.firstName} {user.lastName} ({user.role})
+            </p>
+          )}
         </div>
         <div className="flex space-x-2">
           <Button variant="outline" onClick={fetchProducts} disabled={isLoading}>
@@ -255,54 +336,48 @@ export default function StorePage() {
                 Add Product
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>Add New Product</DialogTitle>
                 <DialogDescription>Add a new product to the PACSMIN store</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">Product Name *</Label>
-                    <Input
-                      id="name"
-                      value={newProduct.name || ""}
-                      onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                      placeholder="Enter product name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="price">Price *</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      step="0.01"
-                      value={newProduct.price || ""}
-                      onChange={(e) => setNewProduct({ ...newProduct, price: Number.parseFloat(e.target.value) || 0 })}
-                      placeholder="0.00"
-                    />
-                  </div>
+
+              {error && (
+                <div className="flex items-center space-x-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <p className="text-sm text-red-700">{error}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="category">Category *</Label>
-                    <Input
-                      id="category"
-                      value={newProduct.category || ""}
-                      onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                      placeholder="Enter category"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="quantity">Quantity</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      value={newProduct.quantity || ""}
-                      onChange={(e) => setNewProduct({ ...newProduct, quantity: Number.parseInt(e.target.value) || 0 })}
-                      placeholder="0"
-                    />
-                  </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Product Name *</Label>
+                  <Input
+                    id="name"
+                    value={newProduct.name || ""}
+                    onChange={(e) => {
+                      setNewProduct({ ...newProduct, name: e.target.value })
+                      setError(null) // Clear error when user types
+                    }}
+                    placeholder="Enter product name"
+                    disabled={isCreating}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="price">Price (₱) *</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={newProduct.price || ""}
+                    onChange={(e) => {
+                      setNewProduct({ ...newProduct, price: Number.parseFloat(e.target.value) || 0 })
+                      setError(null) // Clear error when user types
+                    }}
+                    placeholder="0.00"
+                    disabled={isCreating}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="description">Description</Label>
@@ -312,37 +387,58 @@ export default function StorePage() {
                     onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
                     placeholder="Enter product description"
                     rows={3}
+                    disabled={isCreating}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="imageUrl">Image URL</Label>
+                  <Label htmlFor="payment_link">Payment Link</Label>
                   <Input
-                    id="imageUrl"
-                    value={newProduct.imageUrl || ""}
-                    onChange={(e) => setNewProduct({ ...newProduct, imageUrl: e.target.value })}
-                    placeholder="https://..."
+                    id="payment_link"
+                    type="url"
+                    value={newProduct.payment_link || ""}
+                    onChange={(e) => setNewProduct({ ...newProduct, payment_link: e.target.value })}
+                    placeholder="https://example.com/payment"
+                    disabled={isCreating}
                   />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="inStock"
-                    checked={newProduct.inStock || false}
-                    onChange={(e) => setNewProduct({ ...newProduct, inStock: e.target.checked })}
-                  />
-                  <Label htmlFor="inStock">In Stock</Label>
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsCreateDialogOpen(false)
+                      setError(null)
+                    }}
+                    disabled={isCreating}
+                  >
                     Cancel
                   </Button>
-                  <Button onClick={handleCreateProduct}>Add Product</Button>
+                  <Button onClick={handleCreateProduct} disabled={isCreating}>
+                    {isCreating ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Add Product"
+                    )}
+                  </Button>
                 </div>
               </div>
             </DialogContent>
           </Dialog>
         </div>
       </div>
+
+      {/* Error Display */}
+      {error && !isCreateDialogOpen && !isEditDialogOpen && (
+        <div className="flex items-center space-x-2 p-4 bg-red-50 border border-red-200 rounded-md">
+          <AlertCircle className="h-5 w-5 text-red-600" />
+          <p className="text-sm text-red-700">{error}</p>
+          <Button variant="ghost" size="sm" onClick={() => setError(null)}>
+            ×
+          </Button>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -364,25 +460,11 @@ export default function StorePage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-700">In Stock</p>
-                <p className="text-3xl font-bold text-green-900">{stats.inStock}</p>
+                <p className="text-sm font-medium text-green-700">With Payment Links</p>
+                <p className="text-3xl font-bold text-green-900">{stats.withPaymentLinks}</p>
               </div>
               <div className="h-12 w-12 bg-green-600 rounded-lg flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-red-700">Out of Stock</p>
-                <p className="text-3xl font-bold text-red-900">{stats.outOfStock}</p>
-              </div>
-              <div className="h-12 w-12 bg-red-600 rounded-lg flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6 text-white" />
+                <Link className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
@@ -401,45 +483,33 @@ export default function StorePage() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-orange-700">Average Price</p>
+                <p className="text-3xl font-bold text-orange-900">₱{stats.averagePrice.toFixed(2)}</p>
+              </div>
+              <div className="h-12 w-12 bg-orange-600 rounded-lg flex items-center justify-center">
+                <TrendingUp className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Filters and Search */}
+      {/* Search */}
       <Card>
         <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search products by name, category, or description..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="w-full sm:w-48">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filter by category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {getUniqueCategories().map((category) => (
-                  <SelectItem key={category} value={category.toLowerCase()}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterStock} onValueChange={setFilterStock}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Filter by stock" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Products</SelectItem>
-                <SelectItem value="in-stock">In Stock</SelectItem>
-                <SelectItem value="out-of-stock">Out of Stock</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search products by name or description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
         </CardContent>
       </Card>
@@ -448,7 +518,7 @@ export default function StorePage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-navy-800">Products ({filteredProducts.length})</CardTitle>
-          <CardDescription>Manage all store products and inventory</CardDescription>
+          <CardDescription>Manage all store products and payment links</CardDescription>
         </CardHeader>
         <CardContent>
           {filteredProducts.length === 0 ? (
@@ -465,10 +535,9 @@ export default function StorePage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Product</TableHead>
-                    <TableHead>Category</TableHead>
                     <TableHead>Price</TableHead>
-                    <TableHead>Stock</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Payment Link</TableHead>
+                    <TableHead>Created</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -476,53 +545,36 @@ export default function StorePage() {
                   {filteredProducts.map((product) => (
                     <TableRow key={product.$id} className="hover:bg-gray-50">
                       <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <div className="h-12 w-12 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
-                            {product.imageUrl ? (
-                              <img
-                                src={product.imageUrl || "/placeholder.svg"}
-                                alt={product.name}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <Package className="h-6 w-6 text-gray-400" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-navy-800">{product.name}</p>
-                            <p className="text-sm text-gray-600 line-clamp-1">{product.description}</p>
-                          </div>
+                        <div>
+                          <p className="font-semibold text-navy-800">{product.name}</p>
+                          <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                          {product.category}
-                        </Badge>
+                        <p className="font-semibold text-navy-800">₱{product.price?.toFixed(2) || "0.00"}</p>
                       </TableCell>
                       <TableCell>
-                        <p className="font-semibold text-navy-800">₱{product.price.toFixed(2)}</p>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium">{product.quantity} units</p>
-                          {product.quantity <= 5 && product.quantity > 0 && (
-                            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs">
-                              Low Stock
+                        {product.payment_link && isValidUrl(product.payment_link) ? (
+                          <div className="flex items-center space-x-2">
+                            <Badge variant="default" className="bg-green-100 text-green-800">
+                              Available
                             </Badge>
-                          )}
-                        </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => window.open(product.payment_link, "_blank")}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Badge variant="secondary" className="bg-gray-100 text-gray-800">
+                            No Link
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant={product.inStock && product.quantity > 0 ? "default" : "secondary"}
-                          className={
-                            product.inStock && product.quantity > 0
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }
-                        >
-                          {product.inStock && product.quantity > 0 ? "In Stock" : "Out of Stock"}
-                        </Badge>
+                        <p className="text-sm text-gray-600">{new Date(product.$createdAt).toLocaleDateString()}</p>
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
@@ -539,52 +591,35 @@ export default function StorePage() {
                               </DialogHeader>
                               {selectedProduct && (
                                 <div className="space-y-4">
-                                  <div className="flex items-start space-x-4">
-                                    <div className="h-24 w-24 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
-                                      {selectedProduct.imageUrl ? (
-                                        <img
-                                          src={selectedProduct.imageUrl || "/placeholder.svg"}
-                                          alt={selectedProduct.name}
-                                          className="h-full w-full object-cover"
-                                        />
-                                      ) : (
-                                        <Package className="h-8 w-8 text-gray-400" />
-                                      )}
-                                    </div>
-                                    <div className="flex-1">
-                                      <h3 className="text-lg font-semibold">{selectedProduct.name}</h3>
-                                      <p className="text-gray-600">{selectedProduct.description}</p>
-                                      <div className="mt-2 flex items-center space-x-4">
-                                        <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                                          {selectedProduct.category}
-                                        </Badge>
-                                        <Badge
-                                          variant={
-                                            selectedProduct.inStock && selectedProduct.quantity > 0
-                                              ? "default"
-                                              : "secondary"
-                                          }
-                                          className={
-                                            selectedProduct.inStock && selectedProduct.quantity > 0
-                                              ? "bg-green-100 text-green-800"
-                                              : "bg-red-100 text-red-800"
-                                          }
-                                        >
-                                          {selectedProduct.inStock && selectedProduct.quantity > 0
-                                            ? "In Stock"
-                                            : "Out of Stock"}
-                                        </Badge>
-                                      </div>
-                                    </div>
+                                  <div>
+                                    <h3 className="text-lg font-semibold">{selectedProduct.name}</h3>
+                                    <p className="text-gray-600">{selectedProduct.description}</p>
                                   </div>
                                   <div className="grid grid-cols-2 gap-4">
                                     <div>
                                       <Label className="text-sm font-medium text-gray-700">Price</Label>
-                                      <p className="text-sm text-gray-900">₱{selectedProduct.price.toFixed(2)}</p>
+                                      <p className="text-sm text-gray-900">
+                                        ₱{selectedProduct.price?.toFixed(2) || "0.00"}
+                                      </p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium text-gray-700">Quantity</Label>
-                                      <p className="text-sm text-gray-900">{selectedProduct.quantity} units</p>
+                                      <Label className="text-sm font-medium text-gray-700">Payment Link</Label>
+                                      {selectedProduct.payment_link && isValidUrl(selectedProduct.payment_link) ? (
+                                        <div className="flex items-center space-x-2">
+                                          <p className="text-sm text-blue-600 truncate">
+                                            {selectedProduct.payment_link}
+                                          </p>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => window.open(selectedProduct.payment_link, "_blank")}
+                                          >
+                                            <ExternalLink className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      ) : (
+                                        <p className="text-sm text-gray-500">No payment link</p>
+                                      )}
                                     </div>
                                     <div>
                                       <Label className="text-sm font-medium text-gray-700">Created</Label>
@@ -611,70 +646,56 @@ export default function StorePage() {
                                 onClick={() => {
                                   setSelectedProduct(product)
                                   setIsEditDialogOpen(true)
+                                  setError(null)
                                 }}
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
                             </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
+                            <DialogContent className="max-w-lg">
                               <DialogHeader>
                                 <DialogTitle>Edit Product</DialogTitle>
                                 <DialogDescription>Update product information</DialogDescription>
                               </DialogHeader>
+
+                              {error && (
+                                <div className="flex items-center space-x-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                                  <AlertCircle className="h-4 w-4 text-red-600" />
+                                  <p className="text-sm text-red-700">{error}</p>
+                                </div>
+                              )}
+
                               {selectedProduct && (
                                 <div className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <Label htmlFor="edit-name">Product Name *</Label>
-                                      <Input
-                                        id="edit-name"
-                                        value={selectedProduct.name}
-                                        onChange={(e) =>
-                                          setSelectedProduct({ ...selectedProduct, name: e.target.value })
-                                        }
-                                      />
-                                    </div>
-                                    <div>
-                                      <Label htmlFor="edit-price">Price *</Label>
-                                      <Input
-                                        id="edit-price"
-                                        type="number"
-                                        step="0.01"
-                                        value={selectedProduct.price}
-                                        onChange={(e) =>
-                                          setSelectedProduct({
-                                            ...selectedProduct,
-                                            price: Number.parseFloat(e.target.value) || 0,
-                                          })
-                                        }
-                                      />
-                                    </div>
+                                  <div>
+                                    <Label htmlFor="edit-name">Product Name *</Label>
+                                    <Input
+                                      id="edit-name"
+                                      value={selectedProduct.name}
+                                      onChange={(e) => {
+                                        setSelectedProduct({ ...selectedProduct, name: e.target.value })
+                                        setError(null)
+                                      }}
+                                      disabled={isUpdating}
+                                    />
                                   </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <Label htmlFor="edit-category">Category *</Label>
-                                      <Input
-                                        id="edit-category"
-                                        value={selectedProduct.category}
-                                        onChange={(e) =>
-                                          setSelectedProduct({ ...selectedProduct, category: e.target.value })
-                                        }
-                                      />
-                                    </div>
-                                    <div>
-                                      <Label htmlFor="edit-quantity">Quantity</Label>
-                                      <Input
-                                        id="edit-quantity"
-                                        type="number"
-                                        value={selectedProduct.quantity}
-                                        onChange={(e) =>
-                                          setSelectedProduct({
-                                            ...selectedProduct,
-                                            quantity: Number.parseInt(e.target.value) || 0,
-                                          })
-                                        }
-                                      />
-                                    </div>
+                                  <div>
+                                    <Label htmlFor="edit-price">Price (₱) *</Label>
+                                    <Input
+                                      id="edit-price"
+                                      type="number"
+                                      step="0.01"
+                                      min="0.01"
+                                      value={selectedProduct.price}
+                                      onChange={(e) => {
+                                        setSelectedProduct({
+                                          ...selectedProduct,
+                                          price: Number.parseFloat(e.target.value) || 0,
+                                        })
+                                        setError(null)
+                                      }}
+                                      disabled={isUpdating}
+                                    />
                                   </div>
                                   <div>
                                     <Label htmlFor="edit-description">Description</Label>
@@ -685,34 +706,43 @@ export default function StorePage() {
                                         setSelectedProduct({ ...selectedProduct, description: e.target.value })
                                       }
                                       rows={3}
+                                      disabled={isUpdating}
                                     />
                                   </div>
                                   <div>
-                                    <Label htmlFor="edit-imageUrl">Image URL</Label>
+                                    <Label htmlFor="edit-payment_link">Payment Link</Label>
                                     <Input
-                                      id="edit-imageUrl"
-                                      value={selectedProduct.imageUrl || ""}
+                                      id="edit-payment_link"
+                                      type="url"
+                                      value={selectedProduct.payment_link || ""}
                                       onChange={(e) =>
-                                        setSelectedProduct({ ...selectedProduct, imageUrl: e.target.value })
+                                        setSelectedProduct({ ...selectedProduct, payment_link: e.target.value })
                                       }
+                                      placeholder="https://example.com/payment"
+                                      disabled={isUpdating}
                                     />
                                   </div>
-                                  <div className="flex items-center space-x-2">
-                                    <input
-                                      type="checkbox"
-                                      id="edit-inStock"
-                                      checked={selectedProduct.inStock}
-                                      onChange={(e) =>
-                                        setSelectedProduct({ ...selectedProduct, inStock: e.target.checked })
-                                      }
-                                    />
-                                    <Label htmlFor="edit-inStock">In Stock</Label>
-                                  </div>
-                                  <div className="flex justify-end space-x-2">
-                                    <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                                  <div className="flex justify-end space-x-2 pt-4">
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => {
+                                        setIsEditDialogOpen(false)
+                                        setError(null)
+                                      }}
+                                      disabled={isUpdating}
+                                    >
                                       Cancel
                                     </Button>
-                                    <Button onClick={handleUpdateProduct}>Update Product</Button>
+                                    <Button onClick={handleUpdateProduct} disabled={isUpdating}>
+                                      {isUpdating ? (
+                                        <>
+                                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                          Updating...
+                                        </>
+                                      ) : (
+                                        "Update Product"
+                                      )}
+                                    </Button>
                                   </div>
                                 </div>
                               )}
